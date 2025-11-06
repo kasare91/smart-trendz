@@ -1,0 +1,73 @@
+// Prisma schema for Smart Trendz Management System
+// Supports SQLite (development) and PostgreSQL (production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  // For PostgreSQL, change to: provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  fullName    String
+  phoneNumber String
+  email       String?
+  createdAt   DateTime @default(now())
+
+  orders      Order[]
+
+  @@index([fullName])
+  @@index([phoneNumber])
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  orderNumber String   @unique
+  customerId  String
+  description String
+  totalAmount Float
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, READY, COLLECTED, CANCELLED
+  orderDate   DateTime
+  dueDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+
+  @@index([customerId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  orderId       String
+  amount        Float
+  paymentDate   DateTime
+  paymentMethod String   @default("CASH") // CASH, MOMO, CARD, OTHER
+  note          String?
+  createdAt     DateTime @default(now())
+
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([paymentDate])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String   // bcrypt hashed
+  role      String   @default("STAFF") // ADMIN, STAFF, VIEWER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
