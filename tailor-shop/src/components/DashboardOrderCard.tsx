@@ -27,6 +27,30 @@ export default function DashboardOrderCard({ order }: DashboardOrderCardProps) {
     setPaymentModal(true);
   };
 
+  const handleMarkAsCollected = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm(`Mark order ${order.orderNumber} as collected?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'COLLECTED' }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update order');
+
+      router.refresh();
+    } catch (error) {
+      alert('Failed to mark order as collected');
+      console.error(error);
+    }
+  };
+
   const handlePaymentSuccess = () => {
     router.refresh();
   };
@@ -62,14 +86,24 @@ export default function DashboardOrderCard({ order }: DashboardOrderCardProps) {
           </div>
         </div>
 
-        {hasBalance && order.status !== 'COLLECTED' && order.status !== 'CANCELLED' && (
-          <button
-            onClick={handleReceivePayment}
-            className="w-full px-4 py-2 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors font-medium shadow-sm"
-          >
-            💰 Receive Payment
-          </button>
-        )}
+        <div className="flex gap-2">
+          {order.status === 'READY' && (
+            <button
+              onClick={handleMarkAsCollected}
+              className="flex-1 px-4 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600 transition-colors font-medium shadow-sm"
+            >
+              ✓ Collected
+            </button>
+          )}
+          {hasBalance && order.status !== 'COLLECTED' && order.status !== 'CANCELLED' && (
+            <button
+              onClick={handleReceivePayment}
+              className="flex-1 px-4 py-2 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors font-medium shadow-sm"
+            >
+              💰 Receive Payment
+            </button>
+          )}
+        </div>
       </Link>
 
       {paymentModal && (

@@ -1,8 +1,13 @@
 import { differenceInDays, startOfWeek, endOfWeek, format } from 'date-fns';
-import { Order, Payment } from '@prisma/client';
+import { Order, Payment, Customer } from '@prisma/client';
 
 export type OrderWithPayments = Order & {
   payments: Payment[];
+};
+
+export type OrderWithRelations = Order & {
+  payments: Payment[];
+  customer: Customer;
 };
 
 export type DueDateUrgency = 'safe' | 'warning-5' | 'warning-3' | 'warning-1' | 'overdue';
@@ -165,7 +170,7 @@ export function generateOrderNumber(lastOrderNumber: string | null): string {
 /**
  * Enrich order with computed fields
  */
-export function enrichOrder(order: OrderWithPayments) {
+export function enrichOrder<T extends OrderWithPayments | OrderWithRelations>(order: T) {
   const amountPaid = calculateAmountPaid(order.payments);
   const balance = calculateBalance(order.totalAmount, amountPaid);
   const daysToDue = calculateDaysToDue(order.dueDate);

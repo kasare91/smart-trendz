@@ -12,7 +12,7 @@ import {
 import PaymentModal from '@/components/PaymentModal';
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -43,12 +43,38 @@ export default function OrdersPage() {
   };
 
   const handleReceivePayment = (e: React.MouseEvent, order: any) => {
+    e.preventDefault();
     e.stopPropagation();
+    console.log('Opening payment modal for order:', order.orderNumber);
     setPaymentModal({ isOpen: true, order });
   };
 
   const handlePaymentSuccess = () => {
     fetchOrders();
+  };
+
+  const handleMarkAsCollected = async (e: React.MouseEvent, orderId: string, orderNumber: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm(`Mark order ${orderNumber} as collected?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'COLLECTED' }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update order');
+
+      fetchOrders(); // Refresh the orders list
+    } catch (error) {
+      alert('Failed to mark order as collected');
+      console.error(error);
+    }
   };
 
   const enrichedOrders = orders.map(enrichOrder);
@@ -204,6 +230,15 @@ export default function OrdersPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
+                            {order.status === 'READY' && (
+                              <button
+                                onClick={(e) => handleMarkAsCollected(e, order.id, order.orderNumber)}
+                                className="px-3 py-1.5 bg-purple-500 text-white text-xs rounded-lg hover:bg-purple-600 transition-colors font-medium shadow-sm"
+                                title="Mark as collected"
+                              >
+                                ✓ Collected
+                              </button>
+                            )}
                             {hasBalance && order.status !== 'COLLECTED' && order.status !== 'CANCELLED' && (
                               <button
                                 onClick={(e) => handleReceivePayment(e, order)}
@@ -270,14 +305,24 @@ export default function OrdersPage() {
                         </div>
                       </div>
                     </Link>
-                    {hasBalance && order.status !== 'COLLECTED' && order.status !== 'CANCELLED' && (
-                      <button
-                        onClick={(e) => handleReceivePayment(e, order)}
-                        className="w-full px-4 py-2 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors font-medium shadow-sm"
-                      >
-                        💰 Receive Payment
-                      </button>
-                    )}
+                    <div className="flex gap-2 mt-2">
+                      {order.status === 'READY' && (
+                        <button
+                          onClick={(e) => handleMarkAsCollected(e, order.id, order.orderNumber)}
+                          className="flex-1 px-4 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600 transition-colors font-medium shadow-sm"
+                        >
+                          ✓ Mark Collected
+                        </button>
+                      )}
+                      {hasBalance && order.status !== 'COLLECTED' && order.status !== 'CANCELLED' && (
+                        <button
+                          onClick={(e) => handleReceivePayment(e, order)}
+                          className="flex-1 px-4 py-2 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors font-medium shadow-sm"
+                        >
+                          💰 Receive Payment
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

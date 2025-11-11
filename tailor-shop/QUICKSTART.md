@@ -12,9 +12,10 @@ npm install
 ## Step 2: Setup Database
 
 ```bash
-npm run prisma:generate
-npm run prisma:push
-npm run prisma:seed
+yarn run prisma:generate
+yarn run prisma:push
+yarn run prisma:seed
+
 ```
 
 ## Step 3: Start the App
@@ -25,7 +26,7 @@ npm run dev
 
 ## Step 4: Open in Browser
 
-Visit: **http://localhost:3000**
+Visit: **http://localhost:3003**
 
 ## What You'll See
 

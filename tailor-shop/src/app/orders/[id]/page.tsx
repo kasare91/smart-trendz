@@ -38,6 +38,27 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     }
   };
 
+  const handleMarkAsCollected = async () => {
+    if (!confirm('Mark this order as collected? The customer has picked up their items.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'COLLECTED' }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update order');
+
+      fetchOrder(); // Refresh the order data
+    } catch (error) {
+      alert('Failed to mark order as collected');
+      console.error(error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -61,19 +82,29 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           </h1>
           <p className="mt-1 text-sm text-gray-500">Order Details</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setShowEditModal(true)}
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
           >
             Edit
           </button>
-          <button
-            onClick={() => setShowPaymentModal(true)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
-          >
-            + Add Payment
-          </button>
+          {order.status === 'READY' && order.status !== 'COLLECTED' && (
+            <button
+              onClick={handleMarkAsCollected}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm"
+            >
+              ✓ Mark as Collected
+            </button>
+          )}
+          {order.status !== 'COLLECTED' && order.status !== 'CANCELLED' && (
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
+            >
+              + Add Payment
+            </button>
+          )}
         </div>
       </div>
 
