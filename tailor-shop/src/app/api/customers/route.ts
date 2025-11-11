@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       where: search
         ? {
             OR: [
-              { fullName: { contains: search, mode: 'insensitive' } },
+              { fullName: { contains: search } },
               { phoneNumber: { contains: search } },
             ],
           }
