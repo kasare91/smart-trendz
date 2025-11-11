@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
         ...(search && {
           OR: [
             { orderNumber: { contains: search } },
-            { description: { contains: search, mode: 'insensitive' } },
-            { customer: { fullName: { contains: search, mode: 'insensitive' } } },
+            { description: { contains: search } },
+            { customer: { fullName: { contains: search } } },
           ],
         }),
         ...(status && { status: status as any }),
