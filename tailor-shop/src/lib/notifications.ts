@@ -8,11 +8,12 @@ if (process.env.SENDGRID_API_KEY) {
 }
 
 // Initialize Nodemailer (fallback for development)
-const transporter = nodemailer.createTransporter({
+// Only create transporter if SMTP credentials are configured
+const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
   secure: false,
-  auth: process.env.SMTP_USER ? {
+  auth: process.env.SMTP_USER && process.env.SMTP_PASSWORD ? {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
   } : undefined,
