@@ -1,15 +1,16 @@
 // Prisma schema for Smart Trendz Management System
-// Supports SQLite (development) and PostgreSQL (production)
+// Using Supabase PostgreSQL for both development and production
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  // For PostgreSQL, change to: provider = "postgresql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
 
 model Customer {
   id          String   @id @default(cuid())

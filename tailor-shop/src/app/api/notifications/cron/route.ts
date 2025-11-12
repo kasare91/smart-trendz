@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { getDueDateUrgency } from '@/lib/utils';
 import { sendOrderReminder } from '@/lib/notifications';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/notifications/cron
  * Cron job to send daily notifications for orders due soon
