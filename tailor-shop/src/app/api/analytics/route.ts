@@ -1,17 +1,33 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 import { startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, format } from 'date-fns';
 
 /**
  * GET /api/analytics
  * Get comprehensive analytics data
+ * Branch filtering: Non-admin users only see their branch analytics
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuth();
+
+    // Build branch filter
+    const branchFilter: any = {};
+    if (user.role !== 'ADMIN') {
+      if (!user.branchId) {
+        return NextResponse.json(
+          { error: 'User not assigned to a branch' },
+          { status: 400 }
+        );
+      }
+      branchFilter.branchId = user.branchId;
+    }
+
     const now = new Date();
     const sixMonthsAgo = subMonths(now, 6);
 
-    // 1. Monthly Revenue (last 6 months)
+    // 1. Monthly Revenue (last 6 months) - filtered by branch
     const months = eachMonthOfInterval({ start: sixMonthsAgo, end: now });
     const monthlyRevenue = await Promise.all(
       months.map(async (month) => {
@@ -21,6 +37,7 @@ export async function GET() {
               gte: startOfMonth(month),
               lte: endOfMonth(month),
             },
+            order: branchFilter,
           },
         });
 
@@ -36,8 +53,9 @@ export async function GET() {
       })
     );
 
-    // 2. Customer Lifetime Value (Top 10)
+    // 2. Customer Lifetime Value (Top 10) - filtered by branch
     const customers = await prisma.customer.findMany({
+      where: branchFilter,
       include: {
         orders: {
           include: { payments: true },
@@ -63,8 +81,9 @@ export async function GET() {
       .sort((a, b) => b.totalSpent - a.totalSpent)
       .slice(0, 10); // Top 10 customers
 
-    // 3. Popular Items Analysis (based on order descriptions)
+    // 3. Popular Items Analysis (based on order descriptions) - filtered by branch
     const allOrders = await prisma.order.findMany({
+      where: branchFilter,
       select: { description: true, totalAmount: true },
     });
 
@@ -92,14 +111,21 @@ export async function GET() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 items
 
-    // 4. Overall Statistics
+    // 4. Overall Statistics - filtered by branch
     const totalRevenue = await prisma.payment.aggregate({
+      where: {
+        order: branchFilter,
+      },
       _sum: { amount: true },
     });
 
-    const totalOrders = await prisma.order.count();
+    const totalOrders = await prisma.order.count({
+      where: branchFilter,
+    });
+
     const activeOrders = await prisma.order.count({
       where: {
+        ...branchFilter,
         status: {
           notIn: ['COLLECTED', 'CANCELLED'],
         },
@@ -107,12 +133,13 @@ export async function GET() {
     });
 
     const allOrdersWithPayments = await prisma.order.findMany({
-      include: { payments: true },
       where: {
+        ...branchFilter,
         status: {
           notIn: ['COLLECTED', 'CANCELLED'],
         },
       },
+      include: { payments: true },
     });
 
     const totalOutstanding = allOrdersWithPayments.reduce((sum, order) => {
@@ -120,8 +147,11 @@ export async function GET() {
       return sum + (order.totalAmount - paid);
     }, 0);
 
-    // 5. Payment Method Distribution
+    // 5. Payment Method Distribution - filtered by branch
     const paymentMethods = await prisma.payment.groupBy({
+      where: {
+        order: branchFilter,
+      },
       by: ['paymentMethod'],
       _sum: { amount: true },
       _count: true,
@@ -133,8 +163,9 @@ export async function GET() {
       count: method._count,
     }));
 
-    // 6. Order Status Distribution
+    // 6. Order Status Distribution - filtered by branch
     const orderStatuses = await prisma.order.groupBy({
+      where: branchFilter,
       by: ['status'],
       _count: true,
     });
@@ -157,12 +188,14 @@ export async function GET() {
       popularItems,
       paymentMethodStats,
       orderStatusStats,
+      // Include branch info for context
+      branch: user.role === 'ADMIN' ? 'All Branches' : user.branchName || 'Unknown',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching analytics:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch analytics' },
-      { status: 500 }
+      { error: error.message || 'Failed to fetch analytics' },
+      { status: error.message === 'Unauthorized' ? 401 : 500 }
     );
   }
 }

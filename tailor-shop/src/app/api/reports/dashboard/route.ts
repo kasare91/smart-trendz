@@ -1,27 +1,45 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 import { getCurrentWeek, calculateDaysToDue } from '@/lib/utils';
 
 /**
  * GET /api/reports/dashboard
  * Get dashboard statistics
+ * Branch filtering: Non-admin users only see their branch data
  */
-export async function GET() {
+export async function GET(_request: NextRequest) {
   try {
+    const user = await requireAuth();
+
+    // Build branch filter
+    const branchFilter: any = {};
+    if (user.role !== 'ADMIN') {
+      if (!user.branchId) {
+        return NextResponse.json(
+          { error: 'User not assigned to a branch' },
+          { status: 400 }
+        );
+      }
+      branchFilter.branchId = user.branchId;
+    }
+
     const { start: weekStart, end: weekEnd } = getCurrentWeek();
 
-    // Active orders count (not COLLECTED or CANCELLED)
+    // Active orders count (not COLLECTED or CANCELLED) - filtered by branch
     const activeOrdersCount = await prisma.order.count({
       where: {
+        ...branchFilter,
         status: {
           notIn: ['COLLECTED', 'CANCELLED'],
         },
       },
     });
 
-    // All active orders with payments for balance calculation
+    // All active orders with payments for balance calculation - filtered by branch
     const activeOrders = await prisma.order.findMany({
       where: {
+        ...branchFilter,
         status: {
           notIn: ['COLLECTED', 'CANCELLED'],
         },
@@ -37,21 +55,23 @@ export async function GET() {
       return sum + (order.totalAmount - paid);
     }, 0);
 
-    // Total received this week
+    // Total received this week - filtered by branch
     const weekPayments = await prisma.payment.findMany({
       where: {
         paymentDate: {
           gte: weekStart,
           lte: weekEnd,
         },
+        order: branchFilter,
       },
     });
 
     const totalReceivedThisWeek = weekPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    // Upcoming orders (due within 5 days, not overdue)
+    // Upcoming orders (due within 5 days, not overdue) - filtered by branch
     const upcomingOrders = await prisma.order.findMany({
       where: {
+        ...branchFilter,
         status: {
           notIn: ['COLLECTED', 'CANCELLED'],
         },
@@ -64,7 +84,6 @@ export async function GET() {
     });
 
     // Filter and categorize by urgency
-    const now = new Date();
     const categorized = {
       overdue: [] as any[],
       due1Day: [] as any[],
@@ -86,12 +105,14 @@ export async function GET() {
       totalOutstanding,
       totalReceivedThisWeek,
       upcomingOrders: categorized,
+      // Include branch info for context
+      branch: user.role === 'ADMIN' ? 'All Branches' : user.branchName || 'Unknown',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching dashboard data:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard data' },
-      { status: 500 }
+      { error: error.message || 'Failed to fetch dashboard data' },
+      { status: error.message === 'Unauthorized' ? 401 : 500 }
     );
   }
 }
