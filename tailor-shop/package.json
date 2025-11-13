@@ -13,6 +13,8 @@
   "prisma:studio": "prisma studio",
   "prisma:seed": "tsx prisma/seed.ts",
   "prisma:clear": "tsx prisma/clear.ts",
+  "prisma:migrate": "tsx prisma/migrate-to-multi-branch.ts",
+  "prisma:pre-migrate": "tsx prisma/production-pre-migration.ts",
   "postinstall": "prisma generate"
 },
 
