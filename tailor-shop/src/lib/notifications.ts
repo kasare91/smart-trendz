@@ -76,6 +76,51 @@ export async function sendSMSReminder(
 }
 
 /**
+ * Send SMS payment confirmation using Twilio
+ */
+export async function sendPaymentConfirmationSMS(
+  phoneNumber: string,
+  customerName: string,
+  orderNumber: string,
+  amountPaid: number,
+  newBalance: number
+): Promise<boolean> {
+  if (process.env.ENABLE_SMS_NOTIFICATIONS !== 'true') {
+    console.log('SMS notifications disabled');
+    return false;
+  }
+
+  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+    console.log('Twilio credentials not configured');
+    return false;
+  }
+
+  try {
+    const twilio = (await import('twilio')).default;
+    const client = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
+
+    const message = newBalance > 0
+      ? `Hi ${customerName}, payment of GHS ${amountPaid.toFixed(2)} received for order ${orderNumber}. Balance: GHS ${newBalance.toFixed(2)}. Thank you! - Smart Trendz`
+      : `Hi ${customerName}, payment of GHS ${amountPaid.toFixed(2)} received for order ${orderNumber}. Fully paid! Thank you! - Smart Trendz`;
+
+    await client.messages.create({
+      body: message,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: phoneNumber,
+    });
+
+    console.log(`Payment confirmation SMS sent to ${phoneNumber} for order ${orderNumber}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending payment confirmation SMS:', error);
+    return false;
+  }
+}
+
+/**
  * Send email reminder using SendGrid or Nodemailer
  */
 export async function sendEmailReminder(

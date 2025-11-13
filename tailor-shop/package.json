@@ -12,6 +12,7 @@
   "prisma:push": "prisma db push",
   "prisma:studio": "prisma studio",
   "prisma:seed": "tsx prisma/seed.ts",
+  "prisma:clear": "tsx prisma/clear.ts",
   "postinstall": "prisma generate"
 },
 

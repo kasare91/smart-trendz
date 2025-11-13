@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     const {
       customerId,
       description,
+      images = [],
       totalAmount,
       orderDate,
       dueDate,
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
         orderNumber,
         customerId,
         description,
+        images: images || [],
         totalAmount: parseFloat(totalAmount),
         status,
         orderDate: new Date(orderDate),

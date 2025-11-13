@@ -19,10 +19,22 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
+          include: {
+            branch: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
         });
 
         if (!user) {
           throw new Error('Invalid email or password');
+        }
+
+        if (!user.active) {
+          throw new Error('Account is inactive. Please contact an administrator.');
         }
 
         const isPasswordValid = await bcrypt.compare(
@@ -39,6 +51,8 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          branchId: user.branchId,
+          branchName: user.branch?.name || null,
         };
       },
     }),
@@ -48,6 +62,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.branchId = user.branchId;
+        token.branchName = user.branchName;
       }
       return token;
     },
@@ -55,6 +71,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
+        session.user.branchId = token.branchId as string | null;
+        session.user.branchName = token.branchName as string | null;
       }
       return session;
     },

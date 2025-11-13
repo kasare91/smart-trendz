@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendPaymentConfirmationSMS } from '@/lib/notifications';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -98,10 +99,29 @@ export async function POST(request: NextRequest) {
         order: {
           include: {
             customer: true,
+            payments: true,
           },
         },
       },
     });
+
+    // Calculate new balance after this payment
+    const totalPaidAfter = payment.order.payments.reduce((sum, p) => sum + p.amount, 0);
+    const newBalance = payment.order.totalAmount - totalPaidAfter;
+
+    // Send payment confirmation SMS
+    try {
+      await sendPaymentConfirmationSMS(
+        payment.order.customer.phoneNumber,
+        payment.order.customer.fullName,
+        payment.order.orderNumber,
+        parseFloat(amount),
+        newBalance
+      );
+    } catch (smsError) {
+      // Log SMS error but don't fail the payment
+      console.error('Failed to send payment confirmation SMS:', smsError);
+    }
 
     return NextResponse.json(payment, { status: 201 });
   } catch (error) {

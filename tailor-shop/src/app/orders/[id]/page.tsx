@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   formatCurrency,
   formatDate,
@@ -181,6 +182,47 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           </dl>
         </div>
       </div>
+
+      {/* Order Photos */}
+      {order.images && order.images.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Order Photos
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {order.images.map((image: string, index: number) => (
+              <div key={index} className="relative aspect-square group">
+                <Image
+                  src={image}
+                  alt={`Order photo ${index + 1}`}
+                  fill
+                  className="object-cover rounded-lg border border-gray-200"
+                />
+                <a
+                  href={image}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-lg"
+                >
+                  <svg
+                    className="w-8 h-8 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                    />
+                  </svg>
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Payment Summary */}
       <div className="bg-white rounded-lg shadow p-6">

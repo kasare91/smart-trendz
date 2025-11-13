@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import ImageUpload from '@/components/ImageUpload';
 
 export default function NewOrderPage() {
   const router = useRouter();
@@ -24,6 +25,8 @@ export default function NewOrderPage() {
     dueDate: '',
     status: 'PENDING',
   });
+
+  const [images, setImages] = useState<string[]>([]);
 
   const [initialPayment, setInitialPayment] = useState({
     amount: '',
@@ -72,6 +75,7 @@ export default function NewOrderPage() {
       const orderData = {
         customerId: finalCustomerId,
         description: order.description,
+        images: images,
         totalAmount: parseFloat(order.totalAmount),
         orderDate: order.orderDate,
         dueDate: order.dueDate,
@@ -232,6 +236,8 @@ export default function NewOrderPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
+
+          <ImageUpload images={images} onImagesChange={setImages} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>

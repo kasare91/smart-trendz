@@ -11,36 +11,63 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Branch {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  location  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  customers Customer[]
+  orders    Order[]
+  activities ActivityLog[]
+
+  @@index([name])
+}
 
 model Customer {
   id          String   @id @default(cuid())
   fullName    String
   phoneNumber String
   email       String?
+  branchId    String
   createdAt   DateTime @default(now())
+  createdBy   String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
 
+  branch      Branch   @relation(fields: [branchId], references: [id])
   orders      Order[]
 
   @@index([fullName])
   @@index([phoneNumber])
+  @@index([branchId])
 }
 
 model Order {
   id          String   @id @default(cuid())
   orderNumber String   @unique
   customerId  String
+  branchId    String
   description String
+  images      String[] @default([]) // Array of base64 image strings
   totalAmount Float
   status      String   @default("PENDING") // PENDING, IN_PROGRESS, READY, COLLECTED, CANCELLED
   orderDate   DateTime
   dueDate     DateTime
   createdAt   DateTime @default(now())
+  createdBy   String?
   updatedAt   DateTime @updatedAt
+  updatedBy   String?
 
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  branch      Branch   @relation(fields: [branchId], references: [id])
   payments    Payment[]
 
   @@index([customerId])
+  @@index([branchId])
   @@index([dueDate])
   @@index([status])
   @@index([orderNumber])
@@ -54,6 +81,7 @@ model Payment {
   paymentMethod String   @default("CASH") // CASH, MOMO, CARD, OTHER
   note          String?
   createdAt     DateTime @default(now())
+  createdBy     String?
 
   order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -67,8 +95,33 @@ model User {
   name      String
   password  String   // bcrypt hashed
   role      String   @default("STAFF") // ADMIN, STAFF, VIEWER
+  branchId  String?
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+
   @@index([email])
+  @@index([branchId])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  userName    String
+  branchId    String
+  action      String   // CREATE, UPDATE, DELETE
+  entity      String   // ORDER, CUSTOMER, PAYMENT, USER
+  entityId    String?
+  description String
+  metadata    Json?    // Additional data about the action
+  createdAt   DateTime @default(now())
+
+  branch      Branch   @relation(fields: [branchId], references: [id])
+
+  @@index([userId])
+  @@index([branchId])
+  @@index([entity])
+  @@index([createdAt])
 }
