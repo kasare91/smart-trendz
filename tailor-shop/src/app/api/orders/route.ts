@@ -3,8 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { generateOrderNumber } from '@/lib/utils';
 import { requireAuth } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
+import { buildBranchFilter, hasAccessToBranch } from '@/lib/branch';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -20,19 +22,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const customerId = searchParams.get('customerId');
 
-    // Build where clause
-    const where: any = {};
-
-    // Branch filtering: Non-admin users can only see their branch
-    if (user.role !== 'ADMIN') {
-      if (!user.branchId) {
-        return NextResponse.json(
-          { error: 'User not assigned to a branch' },
-          { status: 400 }
-        );
-      }
-      where.branchId = user.branchId;
-    }
+    // Build where clause with branch filter
+    const where: any = buildBranchFilter(user);
 
     // Add search filters
     if (search) {
@@ -125,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && customer.branchId !== user.branchId) {
+    if (!hasAccessToBranch(user, customer.branchId)) {
       return NextResponse.json(
         { error: 'Customer not found in your branch' },
         { status: 403 }

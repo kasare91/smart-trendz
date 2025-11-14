@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
+import { resolveBranchId, buildBranchFilter } from '@/lib/branch';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -17,19 +19,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
 
-    // Build where clause
-    const where: any = {};
-
-    // Branch filtering: Non-admin users can only see their branch
-    if (user.role !== 'ADMIN') {
-      if (!user.branchId) {
-        return NextResponse.json(
-          { error: 'User not assigned to a branch' },
-          { status: 400 }
-        );
-      }
-      where.branchId = user.branchId;
-    }
+    // Build where clause with branch filter
+    const where: any = buildBranchFilter(user);
 
     // Add search filters
     if (search) {
@@ -74,7 +65,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
     const body = await request.json();
-    const { fullName, phoneNumber, email, branchId } = body;
+    const { fullName, phoneNumber, email, branchId: bodyBranchId } = body;
 
     // Validation
     if (!fullName || !phoneNumber) {
@@ -84,32 +75,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine branch assignment
-    let assignedBranchId: string;
+    // Resolve branch ID based on user role
+    const branchId = resolveBranchId(user, bodyBranchId);
 
-    if (user.role === 'ADMIN') {
-      // Admin can specify branch or default to a branch
-      if (!branchId) {
-        return NextResponse.json(
-          { error: 'Admin must specify a branch for the customer' },
-          { status: 400 }
-        );
-      }
-      assignedBranchId = branchId;
-    } else {
-      // Staff/Viewer must use their assigned branch
-      if (!user.branchId) {
-        return NextResponse.json(
-          { error: 'User not assigned to a branch' },
-          { status: 400 }
-        );
-      }
-      assignedBranchId = user.branchId;
+    if (!branchId) {
+      return NextResponse.json(
+        { error: user.role === 'ADMIN'
+          ? 'Admin must specify a branch for the customer'
+          : 'User not assigned to a branch'
+        },
+        { status: 400 }
+      );
     }
 
     // Verify branch exists
     const branch = await prisma.branch.findUnique({
-      where: { id: assignedBranchId },
+      where: { id: branchId },
     });
 
     if (!branch) {
@@ -119,13 +100,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create customer
+    // Create customer with branch connection
     const customer = await prisma.customer.create({
       data: {
         fullName,
         phoneNumber,
         email: email || null,
-        branchId: assignedBranchId,
+        branch: {
+          connect: { id: branchId }
+        },
         createdBy: user.id,
         updatedBy: user.id,
       },
@@ -143,7 +126,7 @@ export async function POST(request: NextRequest) {
     await logActivity({
       userId: user.id,
       userName: user.name,
-      branchId: assignedBranchId,
+      branchId: branchId,
       action: 'CREATE',
       entity: 'CUSTOMER',
       entityId: customer.id,

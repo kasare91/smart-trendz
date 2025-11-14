@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
+import { hasAccessToBranch } from '@/lib/branch';
+
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/customers/[id]
@@ -47,7 +52,7 @@ export async function GET(
     }
 
     // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && customer.branchId !== user.branchId) {
+    if (!hasAccessToBranch(user, customer.branchId)) {
       return NextResponse.json(
         { error: 'Customer not found' },
         { status: 403 }
@@ -99,7 +104,7 @@ export async function PATCH(
     }
 
     // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && existingCustomer.branchId !== user.branchId) {
+    if (!hasAccessToBranch(user, existingCustomer.branchId)) {
       return NextResponse.json(
         { error: 'Customer not found' },
         { status: 403 }
@@ -194,7 +199,7 @@ export async function DELETE(
     }
 
     // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && existingCustomer.branchId !== user.branchId) {
+    if (!hasAccessToBranch(user, existingCustomer.branchId)) {
       return NextResponse.json(
         { error: 'Customer not found' },
         { status: 403 }

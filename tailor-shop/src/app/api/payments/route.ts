@@ -3,8 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { sendPaymentConfirmationSMS } from '@/lib/notifications';
 import { requireAuth } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
+import { hasAccessToBranch } from '@/lib/branch';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user has access to this order's branch
-    if (user.role !== 'ADMIN' && order.branchId !== user.branchId) {
+    if (!hasAccessToBranch(user, order.branchId)) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 403 }
