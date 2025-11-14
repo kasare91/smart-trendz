@@ -33,17 +33,6 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        branchId: true,
-        active: true,
-        createdAt: true,
-        updatedAt: true,
-        branch: true,
-      },
     });
 
     return NextResponse.json(users);

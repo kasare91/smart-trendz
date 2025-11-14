@@ -28,7 +28,7 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
         entity: params.entity,
         entityId: params.entityId || null,
         description: params.description,
-        metadata: params.metadata || null,
+        ...(params.metadata && { metadata: params.metadata }),
       },
     });
   } catch (error) {
