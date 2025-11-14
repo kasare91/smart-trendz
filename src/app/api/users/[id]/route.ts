@@ -8,10 +8,10 @@ import bcrypt from 'bcryptjs';
 export const dynamic = 'force-dynamic';
 
 /**
- * PUT /api/users/[id]
+ * PATCH /api/users/[id]
  * Update a user (admin only)
  */
-export async function PUT(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
