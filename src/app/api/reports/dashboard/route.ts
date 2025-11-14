@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { getCurrentWeek, calculateDaysToDue } from '@/lib/utils';
 
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * GET /api/reports/dashboard
  * Get dashboard statistics

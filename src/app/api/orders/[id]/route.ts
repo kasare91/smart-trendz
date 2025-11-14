@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
 
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * GET /api/orders/[id]
  * Get a single order with all details

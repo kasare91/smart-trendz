@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, format } from 'date-fns';
 
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * GET /api/analytics
  * Get comprehensive analytics data

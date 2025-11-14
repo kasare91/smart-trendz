@@ -4,7 +4,9 @@ import { getDueDateUrgency } from '@/lib/utils';
 import { sendOrderReminder } from '@/lib/notifications';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/notifications/cron

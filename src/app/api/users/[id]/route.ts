@@ -5,7 +5,9 @@ import { logActivity } from '@/lib/activity-log';
 import bcrypt from 'bcryptjs';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * PATCH /api/users/[id]
