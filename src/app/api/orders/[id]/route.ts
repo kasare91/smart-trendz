@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
 
 /**
@@ -164,16 +164,16 @@ export async function PATCH(
 /**
  * DELETE /api/orders/[id]
  * Delete an order (cascades to payments)
- * Branch access control: Non-admin users can only delete orders in their branch
+ * Admin only: Only admin users can delete orders
  */
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth();
+    const user = await requireRole(['ADMIN']);
 
-    // Get existing order to verify branch access and log info
+    // Get existing order to log deletion info
     const existingOrder = await prisma.order.findUnique({
       where: { id: params.id },
       include: {
@@ -196,14 +196,6 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
-      );
-    }
-
-    // Verify user has access to this order's branch
-    if (user.role !== 'ADMIN' && existingOrder.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 403 }
       );
     }
 

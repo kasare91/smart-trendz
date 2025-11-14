@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
 
 /**
@@ -159,16 +159,16 @@ export async function PATCH(
 /**
  * DELETE /api/customers/[id]
  * Delete a customer (cascades to orders and payments)
- * Branch access control: Non-admin users can only delete customers in their branch
+ * Admin only: Only admin users can delete customers
  */
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth();
+    const user = await requireRole(['ADMIN']);
 
-    // Get existing customer to verify branch access and log info
+    // Get existing customer to log deletion info
     const existingCustomer = await prisma.customer.findUnique({
       where: { id: params.id },
       include: {
@@ -190,14 +190,6 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Customer not found' },
         { status: 404 }
-      );
-    }
-
-    // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && existingCustomer.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Customer not found' },
-        { status: 403 }
       );
     }
 
