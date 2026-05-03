@@ -2,27 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { getCurrentWeek, calculateDaysToDue } from '@/lib/utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/reports/dashboard
  * Get dashboard statistics
  * Branch filtering: Non-admin users only see their branch data
  */
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    const limited = rateLimit(request, { key: 'reports:dashboard', ...RATE_LIMITS.general });
+    if (limited) return limited;
+
     const user = await requireAuth();
 
     // Build branch filter
-    const branchFilter: any = {};
-    if (user.role !== 'ADMIN') {
-      if (!user.branchId) {
-        return NextResponse.json(
-          { error: 'User not assigned to a branch' },
-          { status: 400 }
-        );
-      }
-      branchFilter.branchId = user.branchId;
-    }
+    const branchFilter: Record<string, unknown> =
+      user.role === 'SUPER_ADMIN'
+        ? {}
+        : user.role === 'ADMIN'
+          ? { branch: { tenantId: user.tenantId! } } // tenantId non-null for non-SUPER_ADMIN users
+          : (() => {
+              if (!user.branchId) throw new ValidationError('User not assigned to a branch');
+              return { branchId: user.branchId };
+            })();
 
     const { start: weekStart, end: weekEnd } = getCurrentWeek();
 
@@ -84,11 +93,12 @@ export async function GET(_request: NextRequest) {
     });
 
     // Filter and categorize by urgency
-    const categorized = {
-      overdue: [] as any[],
-      due1Day: [] as any[],
-      due3Days: [] as any[],
-      due5Days: [] as any[],
+    type UpcomingOrder = (typeof upcomingOrders)[number];
+    const categorized: Record<'overdue' | 'due1Day' | 'due3Days' | 'due5Days', UpcomingOrder[]> = {
+      overdue: [],
+      due1Day: [],
+      due3Days: [],
+      due5Days: [],
     };
 
     upcomingOrders.forEach((order) => {
@@ -108,11 +118,7 @@ export async function GET(_request: NextRequest) {
       // Include branch info for context
       branch: user.role === 'ADMIN' ? 'All Branches' : user.branchName || 'Unknown',
     });
-  } catch (error: any) {
-    console.error('Error fetching dashboard data:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch dashboard data' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error fetching dashboard data:');
   }
 }

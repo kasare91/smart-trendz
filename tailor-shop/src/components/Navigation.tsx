@@ -10,12 +10,15 @@ export default function Navigation() {
   const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const isAdmin = session?.user?.role === 'ADMIN';
+
   const links = [
     { href: '/', label: 'Dashboard', icon: '📊' },
     { href: '/orders', label: 'Orders', icon: '📋' },
     { href: '/customers', label: 'Customers', icon: '👥' },
     { href: '/payments', label: 'Payments', icon: '💰' },
     { href: '/analytics', label: 'Analytics', icon: '📈' },
+    ...(isAdmin ? [{ href: '/users', label: 'Users', icon: '👤' }] : []),
   ];
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
