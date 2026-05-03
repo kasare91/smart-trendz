@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
+import { handleApiError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/errors';
+
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/orders/[id]
@@ -23,6 +29,7 @@ export async function GET(
           select: {
             id: true,
             name: true,
+            tenantId: true,
           },
         },
         payments: {
@@ -32,27 +39,23 @@ export async function GET(
     });
 
     if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Order not found');
     }
 
     // Verify user has access to this order's branch
-    if (user.role !== 'ADMIN' && order.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 403 }
-      );
+    if (user.role === 'SUPER_ADMIN') {
+      // unrestricted
+    } else if (user.role === 'ADMIN') {
+      if (order.branch.tenantId !== user.tenantId) {
+        throw new ForbiddenError('Order not found');
+      }
+    } else if (order.branchId !== user.branchId) {
+      throw new ForbiddenError('Order not found');
     }
 
     return NextResponse.json(order);
-  } catch (error: any) {
-    console.error('Error fetching order:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch order' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error fetching order:');
   }
 }
 
@@ -68,7 +71,16 @@ export async function PATCH(
   try {
     const user = await requireAuth();
     const body = await request.json();
-    const { description, totalAmount, dueDate, status, images } = body;
+    const {
+      description,
+      totalAmount,
+      dueDate,
+      status,
+      images,
+      garmentType,
+      fabricType,
+      collectedNote,
+    } = body;
 
     // Get existing order to verify branch access
     const existingOrder = await prisma.order.findUnique({
@@ -78,6 +90,7 @@ export async function PATCH(
           select: {
             id: true,
             name: true,
+            tenantId: true,
           },
         },
         customer: true,
@@ -85,18 +98,26 @@ export async function PATCH(
     });
 
     if (!existingOrder) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Order not found');
     }
 
     // Verify user has access to this order's branch
-    if (user.role !== 'ADMIN' && existingOrder.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 403 }
-      );
+    if (user.role === 'SUPER_ADMIN') {
+      // unrestricted
+    } else if (user.role === 'ADMIN') {
+      if (existingOrder.branch.tenantId !== user.tenantId) {
+        throw new ForbiddenError('Order not found');
+      }
+    } else if (existingOrder.branchId !== user.branchId) {
+      throw new ForbiddenError('Order not found');
+    }
+
+    const isCollecting = status === 'COLLECTED' && existingOrder.status !== 'COLLECTED';
+    const normalizedCollectionNote =
+      typeof collectedNote === 'string' ? collectedNote.trim() : '';
+
+    if (status === 'COLLECTED' && normalizedCollectionNote.length < 2) {
+      throw new ValidationError('Collection note is required when marking an order as collected');
     }
 
     const order = await prisma.order.update({
@@ -106,6 +127,14 @@ export async function PATCH(
         ...(totalAmount && { totalAmount: parseFloat(totalAmount) }),
         ...(dueDate && { dueDate: new Date(dueDate) }),
         ...(status && { status }),
+        ...(garmentType !== undefined && { garmentType: garmentType || null }),
+        ...(fabricType !== undefined && { fabricType: fabricType || null }),
+        ...(status === 'COLLECTED' && {
+          collectedNote: normalizedCollectionNote,
+          ...((isCollecting || !existingOrder.collectedAt) && {
+            collectedAt: new Date(),
+          }),
+        }),
         ...(images !== undefined && { images }),
         updatedBy: user.id,
       },
@@ -131,6 +160,9 @@ export async function PATCH(
       changes.push(`due date: ${existingOrder.dueDate.toLocaleDateString()} → ${new Date(dueDate).toLocaleDateString()}`);
     }
     if (status && status !== existingOrder.status) changes.push(`status: ${existingOrder.status} → ${status}`);
+    if (garmentType !== undefined && garmentType !== existingOrder.garmentType) changes.push('garment type updated');
+    if (fabricType !== undefined && fabricType !== existingOrder.fabricType) changes.push('fabric type updated');
+    if (status === 'COLLECTED' && normalizedCollectionNote) changes.push('collection note added');
     if (images !== undefined) changes.push('images updated');
 
     if (changes.length > 0) {
@@ -152,28 +184,24 @@ export async function PATCH(
     }
 
     return NextResponse.json(order);
-  } catch (error: any) {
-    console.error('Error updating order:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to update order' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error updating order:');
   }
 }
 
 /**
  * DELETE /api/orders/[id]
  * Delete an order (cascades to payments)
- * Branch access control: Non-admin users can only delete orders in their branch
+ * Admin only: Only admin users can delete orders
  */
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth();
+    const user = await requireRole(['ADMIN']);
 
-    // Get existing order to verify branch access and log info
+    // Get existing order to log deletion info
     const existingOrder = await prisma.order.findUnique({
       where: { id: params.id },
       include: {
@@ -181,6 +209,7 @@ export async function DELETE(
           select: {
             id: true,
             name: true,
+            tenantId: true,
           },
         },
         customer: true,
@@ -193,18 +222,12 @@ export async function DELETE(
     });
 
     if (!existingOrder) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Order not found');
     }
 
-    // Verify user has access to this order's branch
-    if (user.role !== 'ADMIN' && existingOrder.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 403 }
-      );
+    // Cross-tenant guard
+    if (user.role !== 'SUPER_ADMIN' && existingOrder.branch.tenantId !== user.tenantId) {
+      throw new ForbiddenError('Order not found');
     }
 
     await prisma.order.delete({
@@ -231,11 +254,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error deleting order:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete order' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error deleting order:');
   }
 }

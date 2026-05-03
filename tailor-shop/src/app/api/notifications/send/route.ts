@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireRole } from '@/lib/auth';
 import { getDueDateUrgency } from '@/lib/utils';
 import { sendOrderReminder } from '@/lib/notifications';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
+
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * POST /api/notifications/send
@@ -9,14 +17,16 @@ import { sendOrderReminder } from '@/lib/notifications';
  */
 export async function POST(request: NextRequest) {
   try {
+    const limited = rateLimit(request, { key: 'notifications:send', ...RATE_LIMITS.cron });
+    if (limited) return limited;
+
+    await requireRole(['ADMIN', 'STAFF']);
+
     const body = await request.json();
     const { orderId } = body;
 
     if (!orderId) {
-      return NextResponse.json(
-        { error: 'Order ID is required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Order ID is required');
     }
 
     // Fetch order with customer and payments
@@ -29,10 +39,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Order not found');
     }
 
     const urgency = getDueDateUrgency(order.dueDate);
@@ -57,11 +64,7 @@ export async function POST(request: NextRequest) {
       emailSent: results.email,
       smsSent: results.sms,
     });
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    return NextResponse.json(
-      { error: 'Failed to send notification' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error sending notification:');
   }
 }

@@ -1,30 +1,41 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import SessionProvider from "@/components/SessionProvider";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import SetupGate from "@/components/SetupGate";
+import BusinessTitle from "@/components/BusinessTitle";
+import { getBusinessProfile, DEFAULT_BUSINESS_NAME } from "@/lib/business-profile";
 
 const inter = Inter({ subsets: ["latin"] });
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
-  title: "Smart Trendz Manager",
-  description: "Manage customer orders and payments for Smart Trendz",
-  manifest: "/manifest.json",
-  themeColor: "#0ea5e9",
+  title: `${DEFAULT_BUSINESS_NAME} Manager`,
+  description: "Manage customer orders, payments, reminders, and reports for a boutique or tailor shop",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Smart Trendz",
+    title: DEFAULT_BUSINESS_NAME,
   },
 };
 
-export default function RootLayout({
+export const viewport: Viewport = {
+  themeColor: "#0ea5e9",
+};
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const businessProfile = await getBusinessProfile();
+
   return (
     <html lang="en">
       <head>
@@ -34,8 +45,10 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <SessionProvider>
+          <BusinessTitle businessName={businessProfile?.businessName} />
+          <SetupGate />
           <div className="min-h-screen bg-gray-50">
-            <Navigation />
+            <Navigation businessProfile={businessProfile} />
             <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl">
               {children}
             </main>

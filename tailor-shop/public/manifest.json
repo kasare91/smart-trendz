@@ -1,7 +1,7 @@
 {
-  "name": "Smart Trendz",
-  "short_name": "Smart Trendz",
-  "description": "Smart Trendz tailor shop order management system",
+  "name": "Boutique Manager",
+  "short_name": "Boutique",
+  "description": "Boutique and tailor shop order management system",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

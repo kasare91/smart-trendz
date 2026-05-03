@@ -10,8 +10,13 @@ import {
   calculateDaysToDue,
 } from '@/lib/utils';
 import DashboardOrderCard from '@/components/DashboardOrderCard';
+import { getBusinessProfile, DEFAULT_BUSINESS_NAME } from '@/lib/business-profile';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function getDashboardData() {
+  const businessProfile = await getBusinessProfile();
   const { start: weekStart, end: weekEnd } = getCurrentWeek();
 
   // Active orders count (not COLLECTED or CANCELLED)
@@ -90,6 +95,7 @@ async function getDashboardData() {
     totalOutstanding,
     totalReceivedThisWeek,
     upcomingOrders: categorized,
+    businessName: businessProfile?.businessName || DEFAULT_BUSINESS_NAME,
   };
 }
 
@@ -102,7 +108,7 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
         <p className="mt-1.5 text-sm text-gray-500">
-          Overview of Smart Trendz operations
+          Welcome back to {data.businessName}
         </p>
       </div>
 

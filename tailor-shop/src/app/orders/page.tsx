@@ -13,6 +13,7 @@ import PaymentModal from '@/components/PaymentModal';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
+  const [pagination, setPagination] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -34,7 +35,8 @@ export default function OrdersPage() {
 
       const res = await fetch(`/api/orders?${params.toString()}`);
       const data = await res.json();
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : data.data || []);
+      setPagination(Array.isArray(data) ? null : data.pagination);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -332,7 +334,7 @@ export default function OrdersPage() {
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
               <div className="flex items-center justify-between text-sm font-medium">
                 <span className="text-gray-700">
-                  Totals ({enrichedOrders.length} orders)
+                  Totals ({pagination?.total || enrichedOrders.length} orders)
                 </span>
                 <div className="flex space-x-6">
                   <div>

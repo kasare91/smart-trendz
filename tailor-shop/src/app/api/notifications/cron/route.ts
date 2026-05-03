@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getDueDateUrgency } from '@/lib/utils';
 import { sendOrderReminder } from '@/lib/notifications';
+import { getReminderType, getReminderWindowDate } from '@/lib/order-reminders';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { handleApiError } from '@/lib/errors';
+import { Prisma } from '@prisma/client';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/notifications/cron
@@ -21,14 +26,22 @@ export const dynamic = 'force-dynamic';
  *
  * Or call manually: GET /api/notifications/cron?secret=YOUR_CRON_SECRET
  */
+type CronDetail = {
+  orderNumber: string;
+  customerName: string;
+  reminderType: string;
+  skipped?: string;
+  emailSent?: boolean;
+  smsSent?: boolean;
+  error?: string;
+};
+
 export async function GET(request: NextRequest) {
-  // Verify cron secret for security
-  const authHeader = request.headers.get('authorization');
-  const secretParam = request.nextUrl.searchParams.get('secret');
+  const limited = rateLimit(request, { key: 'notifications:cron', ...RATE_LIMITS.cron });
+  if (limited) return limited;
 
-  const expectedSecret = process.env.CRON_SECRET || 'dev-secret-change-in-production';
-
-  if (authHeader !== `Bearer ${expectedSecret}` && secretParam !== expectedSecret) {
+  const secret = request.nextUrl.searchParams.get('secret');
+  if (!secret || secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -55,27 +68,59 @@ export async function GET(request: NextRequest) {
       smsSent: 0,
       skipped: 0,
       failed: 0,
-      details: [] as any[],
+      details: [] as CronDetail[],
     };
 
     for (const order of orders) {
-      const urgency = getDueDateUrgency(order.dueDate);
+      const reminderType = getReminderType(order.dueDate);
 
-      // Only send for orders that are urgent (5 days or less, or overdue)
-      if (urgency === 'safe') {
+      if (!reminderType) {
         results.skipped++;
         continue;
       }
+
+      const windowDate = getReminderWindowDate(order.dueDate);
+      let notificationLogId: string | null = null;
 
       const amountPaid = order.payments.reduce((sum, p) => sum + p.amount, 0);
       const balance = order.totalAmount - amountPaid;
 
       try {
+        const log = await prisma.orderNotificationLog.create({
+          data: {
+            orderId: order.id,
+            reminderType,
+            windowDate,
+          },
+          select: { id: true },
+        });
+        notificationLogId = log.id;
+
         const notificationResult = await sendOrderReminder(
           order.customer,
           order,
           balance
         );
+
+        if (!notificationResult.email && !notificationResult.sms) {
+          await prisma.orderNotificationLog.delete({ where: { id: notificationLogId } });
+          results.skipped++;
+          results.details.push({
+            orderNumber: order.orderNumber,
+            customerName: order.customer.fullName,
+            reminderType,
+            skipped: 'No notification channel sent',
+          });
+          continue;
+        }
+
+        await prisma.orderNotificationLog.update({
+          where: { id: notificationLogId },
+          data: {
+            emailSent: notificationResult.email,
+            smsSent: notificationResult.sms,
+          },
+        });
 
         results.notificationsSent++;
         if (notificationResult.email) results.emailsSent++;
@@ -84,17 +129,37 @@ export async function GET(request: NextRequest) {
         results.details.push({
           orderNumber: order.orderNumber,
           customerName: order.customer.fullName,
-          urgency,
+          reminderType,
           emailSent: notificationResult.email,
           smsSent: notificationResult.sms,
         });
       } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          results.skipped++;
+          results.details.push({
+            orderNumber: order.orderNumber,
+            customerName: order.customer.fullName,
+            reminderType,
+            skipped: 'Already notified for this reminder window',
+          });
+          continue;
+        }
+
+        if (notificationLogId) {
+          await prisma.orderNotificationLog
+            .delete({ where: { id: notificationLogId } })
+            .catch((e) => console.error(`Failed to delete notification log ${notificationLogId} for order ${order.orderNumber}:`, e));
+        }
+
         console.error(`Failed to send notification for order ${order.orderNumber}:`, error);
         results.failed++;
         results.details.push({
           orderNumber: order.orderNumber,
           customerName: order.customer.fullName,
-          urgency,
+          reminderType,
           error: 'Failed to send',
         });
       }
@@ -116,10 +181,6 @@ export async function GET(request: NextRequest) {
       details: results.details,
     });
   } catch (error) {
-    console.error('Error in notification cron job:', error);
-    return NextResponse.json(
-      { error: 'Failed to run notification cron job' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Error in notification cron job:');
   }
 }

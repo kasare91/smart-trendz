@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
+import { handleApiError, ForbiddenError, NotFoundError } from '@/lib/errors';
+
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/customers/[id]
@@ -22,6 +28,7 @@ export async function GET(
           select: {
             id: true,
             name: true,
+            tenantId: true,
           },
         },
         orders: {
@@ -36,31 +43,32 @@ export async function GET(
           },
           orderBy: { createdAt: 'desc' },
         },
+        _count: {
+          select: {
+            measurements: true,
+          },
+        },
       },
     });
 
     if (!customer) {
-      return NextResponse.json(
-        { error: 'Customer not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Customer not found');
     }
 
     // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && customer.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Customer not found' },
-        { status: 403 }
-      );
+    if (user.role === 'SUPER_ADMIN') {
+      // unrestricted
+    } else if (user.role === 'ADMIN') {
+      if (customer.branch.tenantId !== user.tenantId) {
+        throw new ForbiddenError('Customer not found');
+      }
+    } else if (customer.branchId !== user.branchId) {
+      throw new ForbiddenError('Customer not found');
     }
 
     return NextResponse.json(customer);
-  } catch (error: any) {
-    console.error('Error fetching customer:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch customer' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error fetching customer:');
   }
 }
 
@@ -86,24 +94,25 @@ export async function PATCH(
           select: {
             id: true,
             name: true,
+            tenantId: true,
           },
         },
       },
     });
 
     if (!existingCustomer) {
-      return NextResponse.json(
-        { error: 'Customer not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Customer not found');
     }
 
     // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && existingCustomer.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Customer not found' },
-        { status: 403 }
-      );
+    if (user.role === 'SUPER_ADMIN') {
+      // unrestricted
+    } else if (user.role === 'ADMIN') {
+      if (existingCustomer.branch.tenantId !== user.tenantId) {
+        throw new ForbiddenError('Customer not found');
+      }
+    } else if (existingCustomer.branchId !== user.branchId) {
+      throw new ForbiddenError('Customer not found');
     }
 
     const customer = await prisma.customer.update({
@@ -147,28 +156,24 @@ export async function PATCH(
     }
 
     return NextResponse.json(customer);
-  } catch (error: any) {
-    console.error('Error updating customer:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to update customer' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error updating customer:');
   }
 }
 
 /**
  * DELETE /api/customers/[id]
  * Delete a customer (cascades to orders and payments)
- * Branch access control: Non-admin users can only delete customers in their branch
+ * Admin only: Only admin users can delete customers
  */
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth();
+    const user = await requireRole(['ADMIN']);
 
-    // Get existing customer to verify branch access and log info
+    // Get existing customer to log deletion info
     const existingCustomer = await prisma.customer.findUnique({
       where: { id: params.id },
       include: {
@@ -176,6 +181,7 @@ export async function DELETE(
           select: {
             id: true,
             name: true,
+            tenantId: true,
           },
         },
         _count: {
@@ -187,18 +193,12 @@ export async function DELETE(
     });
 
     if (!existingCustomer) {
-      return NextResponse.json(
-        { error: 'Customer not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Customer not found');
     }
 
-    // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && existingCustomer.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Customer not found' },
-        { status: 403 }
-      );
+    // Cross-tenant guard
+    if (user.role !== 'SUPER_ADMIN' && existingCustomer.branch.tenantId !== user.tenantId) {
+      throw new ForbiddenError('Customer not found');
     }
 
     await prisma.customer.delete({
@@ -223,11 +223,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error deleting customer:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete customer' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error deleting customer:');
   }
 }

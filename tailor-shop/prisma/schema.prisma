@@ -1,4 +1,4 @@
-// Prisma schema for Smart Trendz Management System
+// Prisma schema for Tailor Desk management system
 // Using Supabase PostgreSQL for both development and production
 
 generator client {
@@ -11,9 +11,27 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Tenant {
+  id        String       @id @default(cuid())
+  name      String
+  slug      String       @unique
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+
+  businessProfile BusinessProfile?
+  users           User[]
+  branches        Branch[]
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
 model Branch {
   id        String   @id @default(cuid())
-  name      String   @unique
+  name      String
   location  String
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -23,8 +41,40 @@ model Branch {
   customers Customer[]
   orders    Order[]
   activities ActivityLog[]
+  fabricStock FabricStock[]
+
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 
   @@index([name])
+  @@index([tenantId])
+  @@unique([tenantId, name])
+}
+
+model BusinessProfile {
+  id                String   @id @default(cuid())
+  businessName      String
+  businessType      String   @default("Tailor Shop")
+  ownerName         String?
+  phoneNumber       String?
+  email             String?
+  address           String?
+  city              String?
+  country           String?
+  currency          String   @default("USD")
+  logoUrl           String?
+  logoPath          String?
+  brandColor        String?
+  receiptFooterNote String?
+  invoicePrefix     String   @default("ORD")
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenantId  String?  @unique
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+
+  @@index([active])
 }
 
 model Customer {
@@ -40,10 +90,53 @@ model Customer {
 
   branch      Branch   @relation(fields: [branchId], references: [id])
   orders      Order[]
+  measurements Measurement[]
 
   @@index([fullName])
   @@index([phoneNumber])
   @@index([branchId])
+}
+
+model Measurement {
+  id                String   @id @default(cuid())
+  customerId        String
+  takenAt           DateTime @default(now())
+  takenBy           String?
+
+  // Upper body
+  bust              Float?
+  chest             Float?
+  waist             Float?
+  hips              Float?
+  shoulderWidth     Float?
+  sleeveLength      Float?
+  neckCircumference Float?
+  armhole           Float?
+  bicep             Float?
+
+  // Lower body
+  inseam            Float?
+  outseam           Float?
+  thigh             Float?
+  knee              Float?
+  calf              Float?
+  ankleCircumference Float?
+
+  // Full body
+  height            Float?
+  backLength        Float?
+  frontLength       Float?
+  waistToKnee       Float?
+  waistToFloor      Float?
+
+  unit              String   @default("cm")  // "cm" or "inches"
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  customer          Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
 }
 
 model Order {
@@ -52,11 +145,15 @@ model Order {
   customerId  String
   branchId    String
   description String
+  garmentType String?  // e.g. DRESS | SUIT | KENTE | BLAZER | OTHER
+  fabricType  String?  // free text, e.g. "Ankara cotton"
   images      String[] @default([]) // Array of base64 image strings
   totalAmount Float
   status      String   @default("PENDING") // PENDING, IN_PROGRESS, READY, COLLECTED, CANCELLED
   orderDate   DateTime
   dueDate     DateTime
+  collectedAt DateTime? // set when status → COLLECTED
+  collectedNote String? // optional staff note at collection
   createdAt   DateTime @default(now())
   createdBy   String?
   updatedAt   DateTime @updatedAt
@@ -65,6 +162,7 @@ model Order {
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   branch      Branch   @relation(fields: [branchId], references: [id])
   payments    Payment[]
+  notificationLogs OrderNotificationLog[]
 
   @@index([customerId])
   @@index([branchId])
@@ -89,21 +187,72 @@ model Payment {
   @@index([paymentDate])
 }
 
+model FabricStock {
+  id           String   @id @default(cuid())
+  branchId     String
+  name         String   // e.g. "Red Ankara cotton"
+  unit         String   @default("metres")
+  quantity     Float    @default(0)
+  reorderLevel Float    @default(2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
   password  String   // bcrypt hashed
-  role      String   @default("STAFF") // ADMIN, STAFF, VIEWER
+  role      String   @default("STAFF") // ADMIN, STAFF, VIEWER, SUPER_ADMIN
   branchId  String?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   branch    Branch?  @relation(fields: [branchId], references: [id])
+  passwordResetTokens PasswordResetToken[]
+
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
 
   @@index([email])
   @@index([branchId])
+  @@index([tenantId])
+}
+
+model OrderNotificationLog {
+  id           String   @id @default(cuid())
+  orderId      String
+  reminderType String
+  windowDate   DateTime
+  sentAt       DateTime @default(now())
+  emailSent    Boolean  @default(false)
+  smsSent      Boolean  @default(false)
+
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, reminderType, windowDate])
+  @@index([orderId])
+  @@index([reminderType])
+  @@index([windowDate])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model ActivityLog {

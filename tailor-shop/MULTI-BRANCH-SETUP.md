@@ -1,7 +1,7 @@
 # Multi-Branch System Implementation
 
 ## Overview
-Smart Trendz now supports multiple branches with user activity tracking.
+Demo Boutique now supports multiple branches with user activity tracking.
 
 ## Database Changes
 
@@ -39,15 +39,15 @@ Smart Trendz now supports multiple branches with user activity tracking.
 ## Demo Users
 
 ```
-admin@smarttrendz.com / admin123
+admin@example.com / admin123
 - Role: ADMIN
 - Access: All branches
 
-accra@smarttrendz.com / staff123
+accra@example.com / staff123
 - Role: STAFF
 - Branch: Accra
 
-koforidua@smarttrendz.com / staff123
+koforidua@example.com / staff123
 - Role: STAFF
 - Branch: Koforidua
 ```
@@ -248,14 +248,14 @@ const summary = await getUserActivitySummary(userId);
 
 ## Testing
 
-1. Login as admin@smarttrendz.com
+1. Login as admin@example.com
    - Should see all branches
    - Can create users
 
-2. Login as accra@smarttrendz.com
+2. Login as accra@example.com
    - Should only see Accra customers/orders
    - Cannot access Koforidua data
 
-3. Login as koforidua@smarttrendz.com
+3. Login as koforidua@example.com
    - Should only see Koforidua customers/orders
    - Cannot access Accra data

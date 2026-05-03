@@ -1,25 +1,26 @@
 {
   "name": "smart-trendz",
   "version": "1.0.0",
-  "description": "Smart Trendz management system for tracking orders and payments",
+  "description": "Configurable boutique and tailor shop management system for tracking orders and payments",
   "private": true,
- "scripts": {
-  "dev": "next dev",
-  "build": "prisma generate && next build",
-  "start": "next start",
-  "lint": "next lint",
-  "prisma:generate": "prisma generate",
-  "prisma:push": "prisma db push",
-  "prisma:studio": "prisma studio",
-  "prisma:seed": "tsx prisma/seed.ts",
-  "prisma:clear": "tsx prisma/clear.ts",
-  "prisma:pre-migrate": "tsx prisma/production-pre-migration.ts",
-  "postinstall": "prisma generate"
-},
-
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:clear": "tsx prisma/clear.ts",
+    "prisma:pre-migrate": "tsx prisma/production-pre-migration.ts",
+    "postinstall": "prisma generate"
+  },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@react-pdf/renderer": "^4.5.1",
     "@sendgrid/mail": "^8.1.4",
+    "bcryptjs": "^2.4.3",
     "date-fns": "^3.0.6",
     "next": "14.2.18",
     "next-auth": "^4.24.11",
@@ -27,8 +28,10 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.15.0",
-    "twilio": "^5.3.5",
-    "bcryptjs": "^2.4.3"
+    "twilio": "^5.3.5"
+  },
+  "prisma": {
+    "seed": "NODE_ENV=development tsx prisma/seed.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -36,6 +39,7 @@
     "@types/nodemailer": "^6.4.16",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/react-pdf": "^7.0.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "prisma": "^5.22.0",

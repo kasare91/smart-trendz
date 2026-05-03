@@ -139,7 +139,7 @@ async function main() {
       INSERT INTO "User" (id, email, name, password, role, "branchId", active, "createdAt", "updatedAt")
       VALUES (
         gen_random_uuid()::text,
-        'admin@smarttrendz.com',
+        'admin@example.com',
         'Admin User',
         ${hashedPassword},
         'ADMIN',
@@ -170,7 +170,7 @@ async function main() {
     console.log('📝 Next steps:');
     console.log('1. Verify the migration in your database');
     console.log('2. Deploy the new application code');
-    console.log('3. Test with admin@smarttrendz.com / admin123\n');
+    console.log('3. Test with admin@example.com / admin123\n');
 
   } catch (error) {
     console.error('\n❌ Pre-migration failed:', error);
@@ -271,7 +271,7 @@ AND "branchId" IS NULL;
 INSERT INTO "User" (id, email, name, password, role, "branchId", active, "createdAt", "updatedAt")
 VALUES (
   gen_random_uuid()::text,
-  'admin@smarttrendz.com',
+  'admin@example.com',
   'Admin User',
   '$2a$10$YourHashedPasswordHere', -- Generate using bcrypt
   'ADMIN',
@@ -337,7 +337,7 @@ In Vercel dashboard, ensure these are set:
 
 1. **Test Admin Login**:
    - URL: `https://your-app.vercel.app/login`
-   - Email: `admin@smarttrendz.com`
+   - Email: `admin@example.com`
    - Password: `admin123`
    - Should see all branches' data
 
@@ -397,7 +397,7 @@ After successful deployment:
 # Using API or Prisma Studio
 POST /api/users
 {
-  "email": "accra@smarttrendz.com",
+  "email": "accra@example.com",
   "name": "Accra Staff",
   "password": "staff123",
   "role": "STAFF",
@@ -406,7 +406,7 @@ POST /api/users
 
 POST /api/users
 {
-  "email": "koforidua@smarttrendz.com",
+  "email": "koforidua@example.com",
   "name": "Koforidua Staff",
   "password": "staff123",
   "role": "STAFF",

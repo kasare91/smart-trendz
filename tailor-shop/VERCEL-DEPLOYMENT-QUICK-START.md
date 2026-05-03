@@ -16,7 +16,7 @@ git push origin main
 # 4. Vercel will auto-deploy
 # (Or manually: vercel --prod)
 
-# 5. Test with admin@smarttrendz.com / admin123
+# 5. Test with admin@example.com / admin123
 ```
 
 ## Detailed Steps
@@ -165,7 +165,7 @@ vercel --prod
 1. **Visit your app**: `https://your-app.vercel.app`
 
 2. **Login as admin**:
-   - Email: `admin@smarttrendz.com`
+   - Email: `admin@example.com`
    - Password: `admin123`
 
 3. **Check the data**:
@@ -235,7 +235,7 @@ curl -X POST https://your-app.vercel.app/api/users \
   -H "Content-Type: application/json" \
   -H "Cookie: next-auth.session-token=YOUR_TOKEN" \
   -d '{
-    "email": "accra@smarttrendz.com",
+    "email": "accra@example.com",
     "name": "Accra Staff",
     "password": "staff123",
     "role": "STAFF",

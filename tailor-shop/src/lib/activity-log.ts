@@ -1,7 +1,14 @@
 import { prisma } from './prisma';
+import { Prisma } from '@prisma/client';
 
 export type ActivityAction = 'CREATE' | 'UPDATE' | 'DELETE';
-export type ActivityEntity = 'ORDER' | 'CUSTOMER' | 'PAYMENT' | 'USER';
+export type ActivityEntity =
+  | 'ORDER'
+  | 'CUSTOMER'
+  | 'PAYMENT'
+  | 'USER'
+  | 'MEASUREMENT'
+  | 'FABRIC_STOCK';
 
 interface LogActivityParams {
   userId: string;
@@ -11,7 +18,7 @@ interface LogActivityParams {
   entity: ActivityEntity;
   entityId?: string;
   description: string;
-  metadata?: Record<string, any>;
+  metadata?: Prisma.InputJsonValue;
 }
 
 /**

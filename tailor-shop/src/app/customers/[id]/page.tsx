@@ -70,6 +70,17 @@ export default function CustomerDetailPage({
         </h1>
         <p className="mt-1 text-sm text-gray-500">Customer Details</p>
       </div>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href={`/customers/${params.id}/measurements`}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+        >
+          Measurements
+          <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+            {customer._count?.measurements || 0}
+          </span>
+        </Link>
+      </div>
 
       {/* Customer Info */}
       <div className="bg-white rounded-lg shadow p-6">

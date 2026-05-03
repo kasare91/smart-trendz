@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateOrderNumber } from '@/lib/utils';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
+import { handleApiError, ValidationError, NotFoundError, ForbiddenError } from '@/lib/errors';
+import { getPagination, paginationResponse } from '@/lib/pagination';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { getBusinessProfile, DEFAULT_INVOICE_PREFIX } from '@/lib/business-profile';
+import { Prisma } from '@prisma/client';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/orders
@@ -14,23 +21,28 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
+    const limited = rateLimit(request, { key: 'orders:get', ...RATE_LIMITS.general });
+    if (limited) return limited;
+
     const user = await requireAuth();
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
     const status = searchParams.get('status');
     const customerId = searchParams.get('customerId');
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+    const { page, pageSize, skip, take } = getPagination(searchParams);
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.OrderWhereInput = {};
 
-    // Branch filtering: Non-admin users can only see their branch
-    if (user.role !== 'ADMIN') {
-      if (!user.branchId) {
-        return NextResponse.json(
-          { error: 'User not assigned to a branch' },
-          { status: 400 }
-        );
-      }
+    // Tenant + branch scoping
+    if (user.role === 'SUPER_ADMIN') {
+      // no filter
+    } else if (user.role === 'ADMIN') {
+      where.branch = { tenantId: user.tenantId! }; // tenantId non-null for ADMIN role
+    } else {
+      if (!user.branchId) throw new ValidationError('User not assigned to a branch');
       where.branchId = user.branchId;
     }
 
@@ -51,28 +63,36 @@ export async function GET(request: NextRequest) {
       where.customerId = customerId;
     }
 
-    const orders = await prisma.order.findMany({
-      where,
-      include: {
-        customer: true,
-        branch: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        payments: true,
-      },
-      orderBy: { dueDate: 'asc' },
-    });
+    if (from || to) {
+      where.dueDate = {
+        ...(from && { gte: new Date(from) }),
+        ...(to && { lte: new Date(to) }),
+      };
+    }
 
-    return NextResponse.json(orders);
-  } catch (error: any) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch orders' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+    const [orders, total] = await prisma.$transaction([
+      prisma.order.findMany({
+        where,
+        include: {
+          customer: true,
+          branch: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          payments: true,
+        },
+        orderBy: { dueDate: 'asc' },
+        skip,
+        take,
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return NextResponse.json(paginationResponse(orders, page, pageSize, total));
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error fetching orders:');
   }
 }
 
@@ -83,7 +103,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const limited = rateLimit(request, { key: 'orders:post', ...RATE_LIMITS.general });
+    if (limited) return limited;
+
+    const user = await requireRole(['ADMIN', 'STAFF']);
     const body = await request.json();
     const {
       customerId,
@@ -93,15 +116,14 @@ export async function POST(request: NextRequest) {
       orderDate,
       dueDate,
       status = 'PENDING',
+      garmentType,
+      fabricType,
       initialPayment,
     } = body;
 
     // Validation
     if (!customerId || !description || !totalAmount || !orderDate || !dueDate) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      throw new ValidationError('Missing required fields');
     }
 
     // Get customer to verify branch access and inherit branch
@@ -112,32 +134,41 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             name: true,
+            tenantId: true,
           },
         },
       },
     });
 
     if (!customer) {
-      return NextResponse.json(
-        { error: 'Customer not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Customer not found');
     }
 
     // Verify user has access to this customer's branch
-    if (user.role !== 'ADMIN' && customer.branchId !== user.branchId) {
-      return NextResponse.json(
-        { error: 'Customer not found in your branch' },
-        { status: 403 }
-      );
+    if (user.role === 'SUPER_ADMIN') {
+      // unrestricted
+    } else if (user.role === 'ADMIN') {
+      if (customer.branch.tenantId !== user.tenantId) {
+        throw new ForbiddenError('Customer not found in your branch');
+      }
+    } else if (customer.branchId !== user.branchId) {
+      throw new ForbiddenError('Customer not found in your branch');
     }
 
     // Generate order number
+    const businessProfile = await getBusinessProfile(user.tenantId);
+    const invoicePrefix = businessProfile?.invoicePrefix || DEFAULT_INVOICE_PREFIX;
     const lastOrder = await prisma.order.findFirst({
+      where: {
+        orderNumber: {
+          startsWith: `${invoicePrefix}-${new Date().getFullYear()}-`,
+        },
+        ...(user.role !== 'ADMIN' && user.branchId ? { branchId: user.branchId } : {}), // branch-isolated
+      },
       orderBy: { orderNumber: 'desc' },
       select: { orderNumber: true },
     });
-    const orderNumber = generateOrderNumber(lastOrder?.orderNumber || null);
+    const orderNumber = generateOrderNumber(lastOrder?.orderNumber || null, invoicePrefix);
 
     // Create order with optional initial payment
     const order = await prisma.order.create({
@@ -146,6 +177,8 @@ export async function POST(request: NextRequest) {
         customerId,
         branchId: customer.branchId, // Inherit from customer
         description,
+        garmentType: garmentType || null,
+        fabricType: fabricType || null,
         images: images || [],
         totalAmount: parseFloat(totalAmount),
         status,
@@ -198,11 +231,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(order, { status: 201 });
-  } catch (error: any) {
-    console.error('Error creating order:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create order' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error creating order:');
   }
 }

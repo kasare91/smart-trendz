@@ -1,15 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [businessName, setBusinessName] = useState('Tailor Desk');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/business-profile')
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.data?.businessName) setBusinessName(data.data.businessName);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +56,7 @@ export default function LoginPage() {
             <span className="text-3xl">✂️</span>
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900 tracking-tight">
-            Smart Trendz
+            {businessName}
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Sign in to your account
@@ -111,6 +122,9 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
+            <Link href="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">
+              Forgot your password?
+            </Link>
             <p className="text-xs text-gray-500">
               Contact your administrator for account access
             </p>
@@ -121,9 +135,9 @@ export default function LoginPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
           <p className="font-semibold mb-2">Demo Credentials:</p>
           <div className="space-y-1 text-xs">
-            <p>Admin: admin@smarttrendz.com / admin123</p>
-            <p>Staff: staff@smarttrendz.com / staff123</p>
-            <p>Viewer: viewer@smarttrendz.com / viewer123</p>
+            <p>Admin: admin@example.com / admin123</p>
+            <p>Staff: accra@example.com / staff123</p>
+            <p>Staff: koforidua@example.com / staff123</p>
           </div>
         </div>
       </div>

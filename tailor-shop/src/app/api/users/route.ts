@@ -3,9 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
 import bcrypt from 'bcryptjs';
+import { handleApiError, ValidationError, ConflictError, NotFoundError } from '@/lib/errors';
+import { getPagination, paginationResponse } from '@/lib/pagination';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { validatePasswordStrength } from '@/lib/password';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/users
@@ -13,35 +19,58 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireRole(['ADMIN']);
+    const limited = rateLimit(request, { key: 'users:get', ...RATE_LIMITS.general });
+    if (limited) return limited;
+
+    const session = await requireRole(['ADMIN']);
 
     const searchParams = request.nextUrl.searchParams;
     const branchId = searchParams.get('branchId');
     const active = searchParams.get('active');
+    const search = searchParams.get('search');
+    const { page, pageSize, skip, take } = getPagination(searchParams);
 
-    const users = await prisma.user.findMany({
-      where: {
-        ...(branchId && { branchId }),
-        ...(active !== null && { active: active === 'true' }),
-      },
-      include: {
-        branch: {
-          select: {
-            id: true,
-            name: true,
+    const where = {
+      ...(session.role !== 'SUPER_ADMIN' && session.tenantId != null && { tenantId: session.tenantId }),
+      ...(branchId && { branchId }),
+      ...(active !== null && { active: active === 'true' }),
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { email: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    const [users, total] = await prisma.$transaction([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          branchId: true,
+          active: true,
+          createdAt: true,
+          updatedAt: true,
+          branch: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      prisma.user.count({ where }),
+    ]);
 
-    return NextResponse.json(users);
-  } catch (error: any) {
-    console.error('Error fetching users:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch users' },
-      { status: error.message === 'Unauthorized' ? 401 : error.message === 'Forbidden: Insufficient permissions' ? 403 : 500 }
-    );
+    return NextResponse.json(paginationResponse(users, page, pageSize, total));
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error fetching users:');
   }
 }
 
@@ -51,39 +80,32 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const limited = rateLimit(request, { key: 'users:post', ...RATE_LIMITS.auth });
+    if (limited) return limited;
+
     const admin = await requireRole(['ADMIN']);
     const body = await request.json();
     const { email, name, password, role, branchId, active = true } = body;
 
     // Validation
     if (!email || !name || !password || !role) {
-      return NextResponse.json(
-        { error: 'Email, name, password, and role are required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Email, name, password, and role are required');
     }
 
+    validatePasswordStrength(password);
+
     if (!['ADMIN', 'STAFF', 'VIEWER'].includes(role)) {
-      return NextResponse.json(
-        { error: 'Invalid role. Must be ADMIN, STAFF, or VIEWER' },
-        { status: 400 }
-      );
+      throw new ValidationError('Invalid role. Must be ADMIN, STAFF, or VIEWER');
     }
 
     // Staff and Viewer must have a branch
     if ((role === 'STAFF' || role === 'VIEWER') && !branchId) {
-      return NextResponse.json(
-        { error: 'Staff and Viewer users must be assigned to a branch' },
-        { status: 400 }
-      );
+      throw new ValidationError('Staff and Viewer users must be assigned to a branch');
     }
 
     // Admin users should not have a branch
     if (role === 'ADMIN' && branchId) {
-      return NextResponse.json(
-        { error: 'Admin users cannot be assigned to a specific branch' },
-        { status: 400 }
-      );
+      throw new ValidationError('Admin users cannot be assigned to a specific branch');
     }
 
     // Check if email already exists
@@ -92,10 +114,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'A user with this email already exists' },
-        { status: 400 }
-      );
+      throw new ConflictError('A user with this email already exists');
     }
 
     // Verify branch exists if provided
@@ -105,10 +124,12 @@ export async function POST(request: NextRequest) {
       });
 
       if (!branch) {
-        return NextResponse.json(
-          { error: 'Branch not found' },
-          { status: 404 }
-        );
+        throw new NotFoundError('Branch not found');
+      }
+
+      // Prevent assigning a user to a branch from another tenant
+      if (admin.tenantId && branch.tenantId !== admin.tenantId) {
+        throw new NotFoundError('Branch not found');
       }
     }
 
@@ -124,6 +145,7 @@ export async function POST(request: NextRequest) {
         role,
         branchId: branchId || null,
         active,
+        tenantId: admin.tenantId,
       },
       select: {
         id: true,
@@ -160,11 +182,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(newUser, { status: 201 });
-  } catch (error: any) {
-    console.error('Error creating user:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create user' },
-      { status: error.message === 'Unauthorized' ? 401 : error.message === 'Forbidden: Insufficient permissions' ? 403 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error creating user:');
   }
 }

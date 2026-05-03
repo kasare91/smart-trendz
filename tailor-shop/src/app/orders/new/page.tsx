@@ -40,9 +40,9 @@ export default function NewOrderPage() {
 
   const fetchCustomers = async () => {
     try {
-      const res = await fetch('/api/customers');
+      const res = await fetch('/api/customers?pageSize=100');
       const data = await res.json();
-      setCustomers(data);
+      setCustomers(Array.isArray(data) ? data : data.data || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
     }

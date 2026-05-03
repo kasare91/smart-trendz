@@ -121,7 +121,7 @@ async function main() {
     console.log('👨‍💼 Step 5: Setting up admin user...');
 
     const existingAdmin = await prisma.$queryRaw<Array<{ email: string }>>`
-      SELECT email FROM "User" WHERE email = 'admin@smarttrendz.com'
+      SELECT email FROM "User" WHERE email = 'admin@example.com'
     `;
 
     const hashedPassword = await bcrypt.hash('admin123', 10);
@@ -134,7 +134,7 @@ async function main() {
           "branchId" = NULL,
           active = true,
           password = ${hashedPassword}
-        WHERE email = 'admin@smarttrendz.com'
+        WHERE email = 'admin@example.com'
       `;
       console.log('✅ Updated existing admin user\n');
     } else {
@@ -142,7 +142,7 @@ async function main() {
         INSERT INTO "User" (id, email, name, password, role, "branchId", active, "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          'admin@smarttrendz.com',
+          'admin@example.com',
           'Admin User',
           ${hashedPassword},
           'ADMIN',
@@ -224,11 +224,11 @@ async function main() {
     console.log('1. Verify the migration results above');
     console.log('2. Check your database to ensure all data looks correct');
     console.log('3. Deploy the new application code to Vercel');
-    console.log('4. Test with admin@smarttrendz.com / admin123');
+    console.log('4. Test with admin@example.com / admin123');
     console.log('5. Review and reassign customers/users to correct branches as needed\n');
 
     console.log('🔐 Demo Login Credentials:');
-    console.log('   Admin: admin@smarttrendz.com / admin123');
+    console.log('   Admin: admin@example.com / admin123');
     console.log('   (Create branch-specific staff users after deployment)\n');
 
   } catch (error: any) {

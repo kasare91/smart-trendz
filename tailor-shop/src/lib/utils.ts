@@ -107,10 +107,10 @@ export function getUrgencyLabel(urgency: DueDateUrgency, days: number): string {
 /**
  * Format currency (GHS - Ghana Cedis)
  */
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number, currency = 'GHS'): string {
   return new Intl.NumberFormat('en-GH', {
     style: 'currency',
-    currency: 'GHS',
+    currency,
   }).format(amount);
 }
 
@@ -154,17 +154,17 @@ export function getLastWeek(): { start: Date; end: Date } {
 /**
  * Generate next order number (format: T-YYYY-####)
  */
-export function generateOrderNumber(lastOrderNumber: string | null): string {
+export function generateOrderNumber(lastOrderNumber: string | null, prefix = 'ORD'): string {
   const year = new Date().getFullYear();
-  const prefix = `T-${year}-`;
+  const orderPrefix = `${prefix}-${year}-`;
 
-  if (!lastOrderNumber || !lastOrderNumber.startsWith(prefix)) {
-    return `${prefix}0001`;
+  if (!lastOrderNumber || !lastOrderNumber.startsWith(orderPrefix)) {
+    return `${orderPrefix}0001`;
   }
 
   const lastNumber = parseInt(lastOrderNumber.split('-')[2]);
   const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
-  return `${prefix}${nextNumber}`;
+  return `${orderPrefix}${nextNumber}`;
 }
 
 /**

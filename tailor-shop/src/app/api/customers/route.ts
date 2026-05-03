@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
+import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
+import { getPagination, paginationResponse } from '@/lib/pagination';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { Prisma } from '@prisma/client';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/customers
@@ -13,21 +19,24 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
+    const limited = rateLimit(request, { key: 'customers:get', ...RATE_LIMITS.general });
+    if (limited) return limited;
+
     const user = await requireAuth();
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
+    const { page, pageSize, skip, take } = getPagination(searchParams);
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.CustomerWhereInput = {};
 
-    // Branch filtering: Non-admin users can only see their branch
-    if (user.role !== 'ADMIN') {
-      if (!user.branchId) {
-        return NextResponse.json(
-          { error: 'User not assigned to a branch' },
-          { status: 400 }
-        );
-      }
+    // Tenant + branch scoping
+    if (user.role === 'SUPER_ADMIN') {
+      // no filter
+    } else if (user.role === 'ADMIN') {
+      where.branch = { tenantId: user.tenantId! };
+    } else {
+      if (!user.branchId) throw new ValidationError('User not assigned to a branch');
       where.branchId = user.branchId;
     }
 
@@ -39,29 +48,30 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const customers = await prisma.customer.findMany({
-      where,
-      include: {
-        branch: {
-          select: {
-            id: true,
-            name: true,
+    const [customers, total] = await prisma.$transaction([
+      prisma.customer.findMany({
+        where,
+        include: {
+          branch: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: { orders: true },
           },
         },
-        _count: {
-          select: { orders: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      prisma.customer.count({ where }),
+    ]);
 
-    return NextResponse.json(customers);
-  } catch (error: any) {
-    console.error('Error fetching customers:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch customers' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+    return NextResponse.json(paginationResponse(customers, page, pageSize, total));
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error fetching customers:');
   }
 }
 
@@ -72,16 +82,16 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const limited = rateLimit(request, { key: 'customers:post', ...RATE_LIMITS.general });
+    if (limited) return limited;
+
+    const user = await requireRole(['ADMIN', 'STAFF']);
     const body = await request.json();
     const { fullName, phoneNumber, email, branchId } = body;
 
     // Validation
     if (!fullName || !phoneNumber) {
-      return NextResponse.json(
-        { error: 'Full name and phone number are required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Full name and phone number are required');
     }
 
     // Determine branch assignment
@@ -90,21 +100,15 @@ export async function POST(request: NextRequest) {
     if (user.role === 'ADMIN') {
       // Admin can specify branch or default to a branch
       if (!branchId) {
-        return NextResponse.json(
-          { error: 'Admin must specify a branch for the customer' },
-          { status: 400 }
-        );
+        throw new ValidationError('Admin must specify a branch for the customer');
       }
       assignedBranchId = branchId;
     } else {
       // Staff/Viewer must use their assigned branch
       if (!user.branchId) {
-        return NextResponse.json(
-          { error: 'User not assigned to a branch' },
-          { status: 400 }
-        );
+        throw new ValidationError('User not assigned to a branch');
       }
-      assignedBranchId = user.branchId;
+      assignedBranchId = user.branchId; // branch-isolated
     }
 
     // Verify branch exists
@@ -113,10 +117,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!branch) {
-      return NextResponse.json(
-        { error: 'Branch not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Branch not found');
     }
 
     // Create customer
@@ -156,11 +157,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(customer, { status: 201 });
-  } catch (error: any) {
-    console.error('Error creating customer:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create customer' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error creating customer:');
   }
 }

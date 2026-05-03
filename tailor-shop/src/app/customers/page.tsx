@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { formatCurrency } from '@/lib/utils';
 
 export default function CustomersPage() {
+  const { data: session } = useSession();
+  const canCreate = session?.user?.role === 'ADMIN' || session?.user?.role === 'STAFF';
   const [customers, setCustomers] = useState([]);
+  const [pagination, setPagination] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -21,7 +25,8 @@ export default function CustomersPage() {
 
       const res = await fetch(`/api/customers?${params.toString()}`);
       const data = await res.json();
-      setCustomers(data);
+      setCustomers(Array.isArray(data) ? data : data.data || []);
+      setPagination(Array.isArray(data) ? null : data.pagination);
     } catch (error) {
       console.error('Error fetching customers:', error);
     } finally {
@@ -35,9 +40,20 @@ export default function CustomersPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
           <p className="mt-1 text-sm text-gray-500">
-            View all your customers
+            View all your customers{pagination ? ` (${pagination.total})` : ''}
           </p>
         </div>
+        {canCreate && (
+          <Link
+            href="/customers/new"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Customer
+          </Link>
+        )}
       </div>
 
       {/* Search */}

@@ -3,9 +3,14 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
 import bcrypt from 'bcryptjs';
+import { handleApiError, ValidationError, ConflictError, NotFoundError } from '@/lib/errors';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { validatePasswordStrength } from '@/lib/password';
 
 // Force dynamic rendering for this route
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * PATCH /api/users/[id]
@@ -16,6 +21,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const limited = rateLimit(request, { key: 'users:patch', ...RATE_LIMITS.auth });
+    if (limited) return limited;
+
     const admin = await requireRole(['ADMIN']);
     const body = await request.json();
     const { email, name, password, role, branchId, active } = body;
@@ -34,26 +42,22 @@ export async function PATCH(
     });
 
     if (!existingUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('User not found');
+    }
+
+    // Prevent cross-tenant modification
+    if (admin.tenantId && existingUser.tenantId !== admin.tenantId) {
+      throw new NotFoundError('User not found');
     }
 
     // Prevent admin from deactivating themselves
     if (params.id === admin.id && active === false) {
-      return NextResponse.json(
-        { error: 'You cannot deactivate your own account' },
-        { status: 400 }
-      );
+      throw new ValidationError('You cannot deactivate your own account');
     }
 
     // Validation
     if (role && !['ADMIN', 'STAFF', 'VIEWER'].includes(role)) {
-      return NextResponse.json(
-        { error: 'Invalid role. Must be ADMIN, STAFF, or VIEWER' },
-        { status: 400 }
-      );
+      throw new ValidationError('Invalid role. Must be ADMIN, STAFF, or VIEWER');
     }
 
     const newRole = role || existingUser.role;
@@ -61,18 +65,12 @@ export async function PATCH(
 
     // Staff and Viewer must have a branch
     if ((newRole === 'STAFF' || newRole === 'VIEWER') && !newBranchId) {
-      return NextResponse.json(
-        { error: 'Staff and Viewer users must be assigned to a branch' },
-        { status: 400 }
-      );
+      throw new ValidationError('Staff and Viewer users must be assigned to a branch');
     }
 
     // Admin users should not have a branch
     if (newRole === 'ADMIN' && newBranchId) {
-      return NextResponse.json(
-        { error: 'Admin users cannot be assigned to a specific branch' },
-        { status: 400 }
-      );
+      throw new ValidationError('Admin users cannot be assigned to a specific branch');
     }
 
     // Check if email is being changed and if it's already taken
@@ -82,10 +80,7 @@ export async function PATCH(
       });
 
       if (emailExists) {
-        return NextResponse.json(
-          { error: 'A user with this email already exists' },
-          { status: 400 }
-        );
+        throw new ConflictError('A user with this email already exists');
       }
     }
 
@@ -96,15 +91,28 @@ export async function PATCH(
       });
 
       if (!branch) {
-        return NextResponse.json(
-          { error: 'Branch not found' },
-          { status: 404 }
-        );
+        throw new NotFoundError('Branch not found');
+      }
+
+      // Prevent cross-tenant branch assignment
+      if (admin.tenantId && branch.tenantId !== admin.tenantId) {
+        throw new NotFoundError('Branch not found');
       }
     }
 
+    if (password) {
+      validatePasswordStrength(password);
+    }
+
     // Prepare update data
-    const updateData: any = {};
+    const updateData: {
+      email?: string;
+      name?: string;
+      password?: string;
+      role?: string;
+      branchId?: string | null;
+      active?: boolean;
+    } = {};
     if (email) updateData.email = email;
     if (name) updateData.name = name;
     if (password) updateData.password = await bcrypt.hash(password, 10);
@@ -161,12 +169,8 @@ export async function PATCH(
     });
 
     return NextResponse.json(updatedUser);
-  } catch (error: any) {
-    console.error('Error updating user:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to update user' },
-      { status: error.message === 'Unauthorized' ? 401 : error.message === 'Forbidden: Insufficient permissions' ? 403 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error updating user:');
   }
 }
 
@@ -179,6 +183,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const limited = rateLimit(request, { key: 'users:delete', ...RATE_LIMITS.auth });
+    if (limited) return limited;
+
     const admin = await requireRole(['ADMIN']);
 
     // Get user
@@ -194,18 +201,17 @@ export async function DELETE(
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('User not found');
+    }
+
+    // Prevent cross-tenant deactivation
+    if (admin.tenantId && user.tenantId !== admin.tenantId) {
+      throw new NotFoundError('User not found');
     }
 
     // Prevent admin from deleting themselves
     if (params.id === admin.id) {
-      return NextResponse.json(
-        { error: 'You cannot delete your own account' },
-        { status: 400 }
-      );
+      throw new ValidationError('You cannot delete your own account');
     }
 
     // Deactivate instead of delete
@@ -239,11 +245,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: 'User deactivated successfully', user: updatedUser });
-  } catch (error: any) {
-    console.error('Error deleting user:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete user' },
-      { status: error.message === 'Unauthorized' ? 401 : error.message === 'Forbidden: Insufficient permissions' ? 403 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error deleting user:');
   }
 }

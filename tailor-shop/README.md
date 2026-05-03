@@ -1,6 +1,6 @@
-# Smart Trendz Management System
+# Tailor Desk
 
-A complete, production-ready web application for managing Smart Trendz customer orders and payments. Built with Next.js, TypeScript, Prisma, and Tailwind CSS.
+A configurable boutique and tailor shop management system for customer orders, payments, balances, reminders, reports, and business branding. Built with Next.js, TypeScript, Prisma, and Tailwind CSS.
 
 ## Features
 
@@ -34,7 +34,8 @@ A complete, production-ready web application for managing Smart Trendz customer 
 - Responsive design (mobile & desktop)
 - Easy database switching (SQLite ↔ PostgreSQL)
 - Type-safe database queries with Prisma
-- Automatic order numbering (T-YYYY-####)
+- Configurable business profile, logo, receipt footer, currency, and invoice prefix
+- Automatic order numbering with the configured invoice prefix, for example `ORD-2026-0001`
 
 ## Tech Stack
 
@@ -75,6 +76,13 @@ npm run prisma:push
 
 This will create a SQLite database file at `prisma/dev.db`.
 
+For production databases, apply committed Prisma migrations instead of pushing:
+
+```bash
+npx prisma migrate deploy
+npm run prisma:generate
+```
+
 ### 3. Configure Environment Variables
 
 The application requires environment variables for authentication and optional notifications. Update `.env`:
@@ -87,7 +95,7 @@ NEXTAUTH_SECRET=your-secret-key-change-in-production
 # Optional: Email Notifications (choose SendGrid OR SMTP)
 ENABLE_EMAIL_NOTIFICATIONS=false
 # SENDGRID_API_KEY=your_sendgrid_key
-# FROM_EMAIL=noreply@smarttrendz.com
+# FROM_EMAIL=noreply@example.com
 
 # OR use SMTP (e.g., Gmail)
 # SMTP_HOST=smtp.gmail.com
@@ -103,6 +111,11 @@ ENABLE_SMS_NOTIFICATIONS=false
 
 # Cron Job Security
 CRON_SECRET=dev-secret-change-in-production
+
+# Supabase Storage for image uploads
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_STORAGE_BUCKET=order-images
 ```
 
 **Generate a secure NEXTAUTH_SECRET**:
@@ -119,15 +132,16 @@ npm run prisma:seed
 ```
 
 This creates:
+- 1 sample business profile (`Demo Boutique`)
 - 3 demo users (see below)
 - 3 customers
 - 7 orders with various statuses and due dates
 - Multiple payments demonstrating all urgency states
 
 **Demo Users**:
-- Admin: `admin@smarttrendz.com` / `admin123`
-- Staff: `staff@smarttrendz.com` / `staff123`
-- Viewer: `viewer@smarttrendz.com` / `viewer123`
+- Admin: `admin@example.com` / `admin123`
+- Staff: `accra@example.com` / `staff123`
+- Staff: `koforidua@example.com` / `staff123`
 
 ### 5. Run the Development Server
 
@@ -137,7 +151,22 @@ npm run dev
 
 Open [http://localhost:3001](http://localhost:3001) in your browser.
 
-**First Time Setup**: You'll be redirected to the login page. Use one of the demo user credentials above to sign in.
+**First Time Setup**: If no business profile exists, the app redirects to `/setup`. Enter the boutique name, contact details, currency, invoice prefix, optional logo, and receipt footer. After setup, sign in with an admin account and use `/settings` to edit the profile later.
+
+### Business Profile Setup
+
+The business profile controls the app branding and printed order summary details:
+
+- Business name and type
+- Owner and contact details
+- Address, city, and country
+- Currency
+- Logo stored through Supabase Storage when configured
+- Optional brand color
+- Receipt footer note
+- Invoice/order prefix
+
+For a new production installation, run migrations, start the app, and complete `/setup` before daily use.
 
 ## Sample Data
 
@@ -228,6 +257,24 @@ tailor-shop/
    - Total received
    - Breakdown by payment method
    - Daily breakdown (Mon-Sun)
+
+## Production Notes
+
+### Supabase Storage
+
+New image uploads are stored in Supabase Storage through the server-side `/api/uploads/images` route. Create a bucket matching `SUPABASE_STORAGE_BUCKET`, configure the bucket/public URL policy you want for image reads, and keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Existing base64 image values remain displayable because the app still accepts data URLs from older records.
+
+### Reminder Cron Dedupe
+
+Reminder sends are recorded in `OrderNotificationLog` with a unique key on `orderId`, `reminderType`, and `windowDate`. The cron supports the 5-day, 3-day, 1-day, and overdue windows and is idempotent for repeated runs.
+
+### Rate Limiting
+
+Sensitive API routes use the in-memory limiter in `src/lib/rate-limit.ts`. This is practical for local development and single-instance deployments. For production with multiple instances, replace the map-backed storage with Redis or Upstash so limits are shared across instances.
+
+### Password Reset Email
+
+Forgot-password requests store only a hashed reset token and return a generic response whether or not an account exists. In development without email enabled, the reset link is logged to the server console. In production, configure SendGrid or SMTP with `ENABLE_EMAIL_NOTIFICATIONS=true`, `FROM_EMAIL`, and the relevant provider credentials.
    - Full payment list
 
 ### Understanding Due Date Colors
@@ -375,7 +422,7 @@ Option 1 - SendGrid (Recommended for production):
 ```env
 ENABLE_EMAIL_NOTIFICATIONS=true
 SENDGRID_API_KEY=your_sendgrid_api_key
-FROM_EMAIL=noreply@smarttrendz.com
+FROM_EMAIL=noreply@example.com
 ```
 
 Option 2 - SMTP (Good for development):

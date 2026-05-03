@@ -1,6 +1,6 @@
 # Future Enhancements Implementation Guide
 
-A roadmap for extending Smart Trendz with advanced features.
+A roadmap for extending Demo Boutique with advanced features.
 
 ## 1. Email/SMS Notifications 📧📱
 
@@ -25,7 +25,7 @@ TWILIO_PHONE_NUMBER=+1234567890
 
 # SendGrid (for Email)
 SENDGRID_API_KEY=your_sendgrid_api_key
-FROM_EMAIL=noreply@smarttrendz.com
+FROM_EMAIL=noreply@example.com
 
 # Notification settings
 ENABLE_SMS_NOTIFICATIONS=true
@@ -57,13 +57,13 @@ export async function sendSMSReminder(
 
   let message = '';
   if (urgency === 'overdue') {
-    message = `Hi ${customerName}, your order ${orderNumber} is OVERDUE. Please collect it from Smart Trendz.`;
+    message = `Hi ${customerName}, your order ${orderNumber} is OVERDUE. Please collect it from Demo Boutique.`;
   } else if (urgency === 'warning-1') {
-    message = `Hi ${customerName}, reminder: Order ${orderNumber} is due TOMORROW at Smart Trendz.`;
+    message = `Hi ${customerName}, reminder: Order ${orderNumber} is due TOMORROW at Demo Boutique.`;
   } else if (urgency === 'warning-3') {
-    message = `Hi ${customerName}, your order ${orderNumber} will be ready in ${days} days. Smart Trendz.`;
+    message = `Hi ${customerName}, your order ${orderNumber} will be ready in ${days} days. Demo Boutique.`;
   } else if (urgency === 'warning-5') {
-    message = `Hi ${customerName}, reminder: Order ${orderNumber} is due in ${days} days. Smart Trendz.`;
+    message = `Hi ${customerName}, reminder: Order ${orderNumber} is due in ${days} days. Demo Boutique.`;
   }
 
   if (process.env.ENABLE_SMS_NOTIFICATIONS === 'true') {
@@ -97,7 +97,7 @@ export async function sendEmailReminder(
       <p>Your order <strong>${orderNumber}</strong> is now overdue.</p>
       <p><strong>Description:</strong> ${orderDescription}</p>
       <p><strong>Outstanding Balance:</strong> GHS ${balance.toFixed(2)}</p>
-      <p>Please visit Smart Trendz to collect your order.</p>
+      <p>Please visit Demo Boutique to collect your order.</p>
     `;
   } else {
     subject = `Reminder: Order ${orderNumber} Due in ${days} Days`;
@@ -530,4 +530,4 @@ For each feature:
 
 ---
 
-**Note**: All features are designed to integrate seamlessly with the existing Smart Trendz codebase without breaking changes to the current schema or API structure.
+**Note**: All features are designed to integrate seamlessly with the existing Demo Boutique codebase without breaking changes to the current schema or API structure.

@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, format } from 'date-fns';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+
+// Force dynamic rendering for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/analytics
@@ -10,19 +17,21 @@ import { startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, format } from
  */
 export async function GET(request: NextRequest) {
   try {
+    const limited = rateLimit(request, { key: 'analytics:get', ...RATE_LIMITS.general });
+    if (limited) return limited;
+
     const user = await requireAuth();
 
     // Build branch filter
-    const branchFilter: any = {};
-    if (user.role !== 'ADMIN') {
-      if (!user.branchId) {
-        return NextResponse.json(
-          { error: 'User not assigned to a branch' },
-          { status: 400 }
-        );
-      }
-      branchFilter.branchId = user.branchId;
-    }
+    const branchFilter: Record<string, unknown> =
+      user.role === 'SUPER_ADMIN'
+        ? {}
+        : user.role === 'ADMIN'
+          ? { branch: { tenantId: user.tenantId! } } // tenantId non-null for non-SUPER_ADMIN users
+          : (() => {
+              if (!user.branchId) throw new ValidationError('User not assigned to a branch');
+              return { branchId: user.branchId };
+            })();
 
     const now = new Date();
     const sixMonthsAgo = subMonths(now, 6);
@@ -191,11 +200,7 @@ export async function GET(request: NextRequest) {
       // Include branch info for context
       branch: user.role === 'ADMIN' ? 'All Branches' : user.branchName || 'Unknown',
     });
-  } catch (error: any) {
-    console.error('Error fetching analytics:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch analytics' },
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, 'Error fetching analytics:');
   }
 }

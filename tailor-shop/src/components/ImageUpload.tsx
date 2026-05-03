@@ -47,30 +47,33 @@ export default function ImageUpload({
           continue;
         }
 
-        // Convert to base64
-        const base64 = await fileToBase64(file);
-        newImageUrls.push(base64);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/uploads/images', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to upload image');
+        }
+
+        newImageUrls.push(result.url || result.path);
       }
 
       onImagesChange([...images, ...newImageUrls]);
     } catch (error) {
       console.error('Error uploading images:', error);
-      alert('Failed to upload images');
+      alert(error instanceof Error ? error.message : 'Failed to upload images');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
   };
 
   const removeImage = (index: number) => {

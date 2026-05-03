@@ -8,6 +8,7 @@ declare module 'next-auth' {
     role: string;
     branchId: string | null;
     branchName: string | null;
+    tenantId: string | null;
   }
 
   interface Session {
@@ -18,6 +19,7 @@ declare module 'next-auth' {
       role: string;
       branchId: string | null;
       branchName: string | null;
+      tenantId: string | null;
     };
   }
 }
@@ -28,5 +30,6 @@ declare module 'next-auth/jwt' {
     role: string;
     branchId: string | null;
     branchName: string | null;
+    tenantId: string | null;
   }
 }

@@ -10,17 +10,40 @@ import {
   enrichOrder,
   getUrgencyColor,
   getUrgencyLabel,
+  OrderWithRelations,
 } from '@/lib/utils';
+import BusinessLogo from '@/components/BusinessLogo';
+import { DEFAULT_BUSINESS_NAME } from '@/lib/business-profile';
+
+type BusinessProfile = {
+  businessName: string;
+  currency?: string;
+  logoUrl?: string | null;
+  brandColor?: string | null;
+  phoneNumber?: string | null;
+  email?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  receiptFooterNote?: string | null;
+};
 
 export default function OrderDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<OrderWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
+  const [whatsAppLoading, setWhatsAppLoading] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [collectionNote, setCollectionNote] = useState('');
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     fetchOrder();
+    fetchBusinessProfile();
   }, [params.id]);
 
   const fetchOrder = async () => {
@@ -28,36 +51,86 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     try {
       const res = await fetch(`/api/orders/${params.id}`);
       if (!res.ok) throw new Error('Order not found');
-      const data = await res.json();
+      const data = (await res.json()) as OrderWithRelations;
       setOrder(data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching order:', error);
-      alert('Order not found');
       router.push('/orders');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMarkAsCollected = async () => {
-    if (!confirm('Mark this order as collected? The customer has picked up their items.')) {
-      return;
+  const fetchBusinessProfile = async () => {
+    try {
+      const res = await fetch('/api/business-profile');
+      const data = (await res.json()) as { data: BusinessProfile | null };
+      setBusinessProfile(data.data);
+    } catch (error: unknown) {
+      console.error('Error fetching business profile:', error);
     }
+  };
 
+  const handleMarkAsCollected = async () => {
+    setCollectionNote('');
+    setShowCollectionModal(true);
+  };
+
+  const handleConfirmCollected = async () => {
     try {
       const res = await fetch(`/api/orders/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'COLLECTED' }),
+        body: JSON.stringify({ status: 'COLLECTED', collectedNote: collectionNote }),
       });
 
-      if (!res.ok) throw new Error('Failed to update order');
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update order');
+      }
 
+      setShowCollectionModal(false);
+      showToast('success', 'Order marked as collected');
       fetchOrder(); // Refresh the order data
-    } catch (error) {
-      alert('Failed to mark order as collected');
-      console.error(error);
+    } catch (error: unknown) {
+      showToast(
+        'error',
+        error instanceof Error ? error.message : 'Failed to mark order as collected'
+      );
     }
+  };
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSendWhatsAppReceipt = async () => {
+    setWhatsAppLoading(true);
+
+    try {
+      const res = await fetch(`/api/orders/${params.id}/whatsapp-receipt`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send WhatsApp receipt');
+
+      showToast('success', 'Sent!');
+    } catch (error: unknown) {
+      showToast(
+        'error',
+        error instanceof Error ? error.message : 'Failed to send WhatsApp receipt'
+      );
+    } finally {
+      setWhatsAppLoading(false);
+    }
+  };
+
+  const handleDownloadReceipt = () => {
+    setReceiptLoading(true);
+    window.open(`/api/orders/${params.id}/receipt`, '_blank', 'noopener,noreferrer');
+    setTimeout(() => setReceiptLoading(false), 1200);
   };
 
   if (loading) {
@@ -90,7 +163,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           >
             Edit
           </button>
-          {order.status === 'READY' && order.status !== 'COLLECTED' && (
+          {order.status === 'READY' && (
             <button
               onClick={handleMarkAsCollected}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm"
@@ -106,8 +179,44 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               + Add Payment
             </button>
           )}
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+          >
+            Print
+          </button>
+          <button
+            onClick={handleDownloadReceipt}
+            disabled={receiptLoading}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50"
+          >
+            {receiptLoading ? 'Generating...' : 'Download Receipt PDF'}
+          </button>
+          {order.customer.phoneNumber && (
+            <button
+              onClick={handleSendWhatsAppReceipt}
+              disabled={whatsAppLoading}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+            >
+              {whatsAppLoading ? 'Sending...' : 'Send WhatsApp Receipt'}
+            </button>
+          )}
         </div>
       </div>
+
+      {toast && (
+        <div
+          className={`rounded-lg px-4 py-3 text-sm font-medium ${
+            toast.type === 'success'
+              ? 'border border-green-200 bg-green-50 text-green-700'
+              : 'border border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
+
+      <PrintableOrderSummary order={order} enriched={enriched} businessProfile={businessProfile} />
 
       {/* Due Date Alert */}
       <div
@@ -280,7 +389,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           </p>
         ) : (
           <div className="space-y-3">
-            {order.payments.map((payment: any) => (
+            {order.payments.map((payment) => (
               <div
                 key={payment.id}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
@@ -342,6 +451,41 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           }}
         />
       )}
+
+      {showCollectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Confirm Collection</h2>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Collection note
+            </label>
+            <textarea
+              value={collectionNote}
+              onChange={(event) => setCollectionNote(event.target.value)}
+              rows={4}
+              placeholder="Collected by customer in person, 2 May 2026"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCollectionModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCollected}
+                disabled={collectionNote.trim().length < 10}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -366,12 +510,114 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function PrintableOrderSummary({
+  order,
+  enriched,
+  businessProfile,
+}: {
+  order: OrderWithRelations;
+  enriched: ReturnType<typeof enrichOrder>;
+  businessProfile: BusinessProfile | null;
+}) {
+  const businessName = businessProfile?.businessName || DEFAULT_BUSINESS_NAME;
+  const address = [businessProfile?.address, businessProfile?.city, businessProfile?.country]
+    .filter(Boolean)
+    .join(', ');
+
+  return (
+    <div className="hidden print:block bg-white text-gray-900 p-8">
+      <div className="flex items-start justify-between border-b border-gray-300 pb-4">
+        <div className="flex items-center gap-4">
+          <BusinessLogo
+            businessName={businessName}
+            logoUrl={businessProfile?.logoUrl}
+            brandColor={businessProfile?.brandColor}
+            size="lg"
+          />
+          <div>
+            <h2 className="text-2xl font-bold">{businessName}</h2>
+            {businessProfile?.phoneNumber && <p className="text-sm">{businessProfile.phoneNumber}</p>}
+            {businessProfile?.email && <p className="text-sm">{businessProfile.email}</p>}
+            {address && <p className="text-sm">{address}</p>}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm text-gray-500">Order</div>
+          <div className="text-xl font-bold">{order.orderNumber}</div>
+          <div className="text-sm">Due: {formatDate(order.dueDate)}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-8 mt-6">
+        <div>
+          <h3 className="font-semibold mb-2">Customer</h3>
+          <p>{order.customer.fullName}</p>
+          <p>{order.customer.phoneNumber}</p>
+          {order.customer.email && <p>{order.customer.email}</p>}
+        </div>
+        <div>
+          <h3 className="font-semibold mb-2">Order Details</h3>
+          <p>Status: {order.status.replace('_', ' ')}</p>
+          <p>Order date: {formatDate(order.orderDate)}</p>
+          <p>{order.description}</p>
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-gray-200 pt-4">
+        <h3 className="font-semibold mb-3">Payment Summary</h3>
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <span>Total amount</span>
+            <span>{formatCurrency(order.totalAmount, businessProfile?.currency || 'GHS')}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Amount paid</span>
+            <span>{formatCurrency(enriched.amountPaid, businessProfile?.currency || 'GHS')}</span>
+          </div>
+          <div className="flex justify-between font-bold text-lg border-t pt-2">
+            <span>Outstanding balance</span>
+            <span>{formatCurrency(enriched.balance, businessProfile?.currency || 'GHS')}</span>
+          </div>
+        </div>
+      </div>
+
+      {order.payments.length > 0 && (
+        <div className="mt-6">
+          <h3 className="font-semibold mb-3">Payment History</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2">Date</th>
+                <th className="text-left py-2">Method</th>
+                <th className="text-right py-2">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {order.payments.map((payment) => (
+                <tr key={payment.id} className="border-b">
+                  <td className="py-2">{formatDateTime(payment.paymentDate)}</td>
+                  <td className="py-2">{payment.paymentMethod}</td>
+                  <td className="py-2 text-right">{formatCurrency(payment.amount, businessProfile?.currency || 'GHS')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {businessProfile?.receiptFooterNote && (
+        <p className="mt-8 text-center text-sm text-gray-600">{businessProfile.receiptFooterNote}</p>
+      )}
+    </div>
+  );
+}
+
 function PaymentModal({
   order,
   onClose,
   onSuccess,
 }: {
-  order: any;
+  order: OrderWithRelations;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -404,8 +650,8 @@ function PaymentModal({
       }
 
       onSuccess();
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : 'Failed to add payment');
     } finally {
       setLoading(false);
     }
@@ -509,7 +755,7 @@ function EditOrderModal({
   onClose,
   onSuccess,
 }: {
-  order: any;
+  order: OrderWithRelations;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -532,11 +778,14 @@ function EditOrderModal({
         body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error('Failed to update order');
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error || 'Failed to update order');
+      }
 
       onSuccess();
-    } catch (error) {
-      alert('Failed to update order');
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : 'Failed to update order');
     } finally {
       setLoading(false);
     }
@@ -608,7 +857,6 @@ function EditOrderModal({
               <option value="PENDING">Pending</option>
               <option value="IN_PROGRESS">In Progress</option>
               <option value="READY">Ready</option>
-              <option value="COLLECTED">Collected</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
           </div>

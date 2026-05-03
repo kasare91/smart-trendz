@@ -1,4 +1,4 @@
-// Service Worker for Smart Trendz offline functionality
+// Service Worker for Tailor Desk offline functionality
 const CACHE_NAME = 'smart-trendz-v1';
 const OFFLINE_URL = '/offline';
 

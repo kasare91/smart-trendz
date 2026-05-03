@@ -12,6 +12,7 @@ export default function PaymentsPage() {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [reportData, setReportData] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchReport();
@@ -20,26 +21,12 @@ export default function PaymentsPage() {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      let startDate: Date;
-      let endDate: Date;
-
-      if (dateRange === 'this-week') {
-        const week = getCurrentWeek();
-        startDate = week.start;
-        endDate = week.end;
-      } else if (dateRange === 'last-week') {
-        const week = getLastWeek();
-        startDate = week.start;
-        endDate = week.end;
-      } else {
-        if (!customStart || !customEnd) return;
-        startDate = new Date(customStart);
-        endDate = new Date(customEnd);
-      }
+      const range = getActiveRange();
+      if (!range) return;
 
       const params = new URLSearchParams({
-        startDate: format(startDate, 'yyyy-MM-dd'),
-        endDate: format(endDate, 'yyyy-MM-dd'),
+        startDate: format(range.startDate, 'yyyy-MM-dd'),
+        endDate: format(range.endDate, 'yyyy-MM-dd'),
       });
 
       const res = await fetch(`/api/reports/weekly-payments?${params.toString()}`);
@@ -49,6 +36,50 @@ export default function PaymentsPage() {
       console.error('Error fetching report:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getActiveRange = () => {
+    if (dateRange === 'this-week') {
+      const week = getCurrentWeek();
+      return { startDate: week.start, endDate: week.end };
+    }
+
+    if (dateRange === 'last-week') {
+      const week = getLastWeek();
+      return { startDate: week.start, endDate: week.end };
+    }
+
+    if (!customStart || !customEnd) return null;
+    return { startDate: new Date(customStart), endDate: new Date(customEnd) };
+  };
+
+  const handleExportCsv = async () => {
+    const range = getActiveRange();
+    if (!range) return;
+
+    setExporting(true);
+    try {
+      const from = format(range.startDate, 'yyyy-MM-dd');
+      const to = format(range.endDate, 'yyyy-MM-dd');
+      const params = new URLSearchParams({ from, to });
+      const response = await fetch(`/api/reports/weekly-payments/export?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to export CSV');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `payments-${from}-${to}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export CSV');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -126,6 +157,17 @@ export default function PaymentsPage() {
             </div>
           </div>
         )}
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={exporting || (dateRange === 'custom' && (!customStart || !customEnd))}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+          >
+            {exporting ? 'Exporting...' : 'Export CSV'}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -264,19 +306,11 @@ export default function PaymentsPage() {
                           <div className="text-sm text-gray-900">
                             {payment.order.customer.fullName}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {payment.order.customer.phoneNumber}
-                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
                             {payment.order.orderNumber}
                           </div>
-                          {payment.note && (
-                            <div className="text-sm text-gray-500">
-                              {payment.note}
-                            </div>
-                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

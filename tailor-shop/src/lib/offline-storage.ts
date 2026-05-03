@@ -4,12 +4,12 @@
  */
 
 const STORAGE_KEYS = {
-  PENDING_ORDERS: 'smart-trendz-pending-orders',
-  PENDING_PAYMENTS: 'smart-trendz-pending-payments',
-  PENDING_CUSTOMERS: 'smart-trendz-pending-customers',
-  CACHED_ORDERS: 'smart-trendz-cached-orders',
-  CACHED_CUSTOMERS: 'smart-trendz-cached-customers',
-  LAST_SYNC: 'smart-trendz-last-sync',
+  PENDING_ORDERS: 'boutique-mgr-pending-orders',
+  PENDING_PAYMENTS: 'boutique-mgr-pending-payments',
+  PENDING_CUSTOMERS: 'boutique-mgr-pending-customers',
+  CACHED_ORDERS: 'boutique-mgr-cached-orders',
+  CACHED_CUSTOMERS: 'boutique-mgr-cached-customers',
+  LAST_SYNC: 'boutique-mgr-last-sync',
 };
 
 interface PendingItem {

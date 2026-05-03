@@ -23,7 +23,7 @@ export default function OfflinePage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-2">You're Offline</h1>
 
         <p className="text-gray-600 mb-6">
-          Smart Trendz requires an internet connection to load new pages. Your previously
+          This app requires an internet connection to load new pages. Your previously
           viewed pages and data may still be available.
         </p>
 

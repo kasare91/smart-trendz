@@ -1,6 +1,6 @@
-# Smart Trendz UI Design Improvements
+# Demo Boutique UI Design Improvements
 
-A clean, modern design system has been applied to the Smart Trendz management application.
+A clean, modern design system has been applied to the Demo Boutique management application.
 
 ## Design Philosophy
 

@@ -4,13 +4,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useState } from 'react';
+import type { BusinessProfile } from '@prisma/client';
+import BusinessLogo from './BusinessLogo';
+import { DEFAULT_BUSINESS_NAME } from '@/lib/business-profile';
 
-export default function Navigation() {
+export default function Navigation({ businessProfile }: { businessProfile?: BusinessProfile | null }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isAdmin = session?.user?.role === 'ADMIN';
+  const businessName = businessProfile?.businessName || DEFAULT_BUSINESS_NAME;
 
   const links = [
     { href: '/', label: 'Dashboard', icon: '📊' },
@@ -18,7 +22,11 @@ export default function Navigation() {
     { href: '/customers', label: 'Customers', icon: '👥' },
     { href: '/payments', label: 'Payments', icon: '💰' },
     { href: '/analytics', label: 'Analytics', icon: '📈' },
-    ...(isAdmin ? [{ href: '/users', label: 'Users', icon: '👤' }] : []),
+    { href: '/settings', label: 'Settings', icon: '⚙️' },
+    ...(isAdmin ? [
+      { href: '/users', label: 'Users', icon: '👤' },
+      { href: '/activity-logs', label: 'Activity Log', icon: '📝' },
+    ] : []),
   ];
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -30,14 +38,16 @@ export default function Navigation() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                <span className="text-xl">✂️</span>
-              </div>
+              <BusinessLogo
+                businessName={businessName}
+                logoUrl={businessProfile?.logoUrl}
+                brandColor={businessProfile?.brandColor}
+              />
               <div className="hidden sm:block">
                 <div className="text-xl font-bold text-gray-900 tracking-tight">
-                  Smart Trendz
+                  {businessName}
                 </div>
-                <div className="text-xs text-gray-500 -mt-0.5">Order Manager</div>
+                <div className="text-xs text-gray-500 -mt-0.5">Boutique Manager</div>
               </div>
             </Link>
 
@@ -113,10 +123,13 @@ export default function Navigation() {
           {/* Mobile Menu Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-lg">✂️</span>
-              </div>
-              <span className="font-bold text-gray-900">Smart Trendz</span>
+              <BusinessLogo
+                businessName={businessName}
+                logoUrl={businessProfile?.logoUrl}
+                brandColor={businessProfile?.brandColor}
+                size="sm"
+              />
+              <span className="font-bold text-gray-900">{businessName}</span>
             </div>
             <button
               onClick={closeMobileMenu}
