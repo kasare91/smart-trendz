@@ -10,6 +10,9 @@ import {
   getUrgencyLabel,
 } from '@/lib/utils';
 import PaymentModal from '@/components/PaymentModal';
+import PageHeader from '@/components/PageHeader';
+import EmptyState from '@/components/EmptyState';
+import SkeletonList from '@/components/SkeletonList';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -93,20 +96,18 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage all customer orders
-          </p>
-        </div>
-        <Link
-          href="/orders/new"
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
-        >
-          + New Order
-        </Link>
-      </div>
+      <PageHeader
+        title="Orders"
+        subtitle="Manage all customer orders"
+        action={
+          <Link
+            href="/orders/new"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm"
+          >
+            + New Order
+          </Link>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
@@ -146,11 +147,18 @@ export default function OrdersPage() {
       {/* Orders List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
+          <SkeletonList rows={6} cols={5} />
         ) : enrichedOrders.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No orders found. Create your first order!
-          </div>
+          <EmptyState
+            icon={
+              <svg width={48} height={48} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+              </svg>
+            }
+            title="No orders yet"
+            body="Create your first order to start tracking work for customers."
+            action={{ label: 'New order', href: '/orders/new' }}
+          />
         ) : (
           <>
             {/* Desktop Table */}
