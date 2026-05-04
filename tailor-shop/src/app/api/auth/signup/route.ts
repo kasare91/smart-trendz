@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       sendVerificationEmail(email, ownerName, verificationUrl).catch(() => undefined);
     }
 
-    return NextResponse.json({ success: true }, { status: 201 });
+    return NextResponse.json({ success: true, emailSent: emailEnabled }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }

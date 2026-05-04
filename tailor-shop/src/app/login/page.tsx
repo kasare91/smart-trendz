@@ -78,7 +78,7 @@ export default function LoginPage() {
 
             {registered && (
               <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm">
-                Account created — check your email to verify, then log in.
+                Account created — you can now sign in.
               </div>
             )}
 

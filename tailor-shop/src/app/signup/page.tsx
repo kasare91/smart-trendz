@@ -24,6 +24,7 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -46,13 +47,14 @@ export default function SignupPage() {
         body: JSON.stringify(form),
       });
 
-      const data = await res.json() as { error?: string; success?: boolean };
+      const data = await res.json() as { error?: string; success?: boolean; emailSent?: boolean };
 
       if (!res.ok) {
         setError(data.error ?? 'Something went wrong. Please try again.');
         return;
       }
 
+      setEmailSent(data.emailSent === true);
       setSuccess(true);
     } catch {
       setError('Network error. Please check your connection and try again.');
@@ -72,11 +74,13 @@ export default function SignupPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Account created!</h2>
-            <p className="text-sm text-gray-600">
-              Check your email for a verification link. Once verified, you can sign in to your boutique dashboard.
+            <p className="text-gray-600 text-sm">
+              {emailSent
+                ? "Check your email for a verification link, then log in to start managing your boutique."
+                : "Your account is ready. Log in to start managing your boutique."}
             </p>
             <Link
-              href="/login"
+              href="/login?registered=true"
               className="inline-block mt-4 py-3 px-6 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium rounded-lg hover:from-primary-600 hover:to-primary-700 transition-all shadow-md hover:shadow-lg"
             >
               Go to login
