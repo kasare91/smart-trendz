@@ -3,15 +3,43 @@
 import { useEffect, useState } from 'react';
 import { getCurrentWeek, getLastWeek, formatCurrency, formatDateTime } from '@/lib/utils';
 import { format } from 'date-fns';
+import PageHeader from '@/components/PageHeader';
 
 type DateRange = 'this-week' | 'last-week' | 'custom';
+
+interface PaymentEntry {
+  id: string;
+  amount: number;
+  paymentMethod: string;
+  paymentDate: string;
+  order: {
+    orderNumber: string;
+    description: string;
+    customer: { fullName: string; phoneNumber: string };
+  };
+}
+interface PaymentReport {
+  totalRevenue: number;
+  totalPayments: number;
+  cashRevenue: number;
+  momoRevenue: number;
+  cardRevenue: number;
+  otherRevenue: number;
+  allPayments: PaymentEntry[];
+  totalAmount: number;
+  totalCount: number;
+  startDate: string;
+  endDate: string;
+  byMethod: Record<string, { total: number; count: number }>;
+  byDay: { date: string; dayName: string; total: number; count: number }[];
+}
 
 export default function PaymentsPage() {
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>('this-week');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [reportData, setReportData] = useState<any>(null);
+  const [reportData, setReportData] = useState<PaymentReport | null>(null);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -85,16 +113,11 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Payments & Reports</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          View payment history and weekly reports
-        </p>
-      </div>
+      <PageHeader title="Payments & Reports" subtitle="View payment history and weekly reports" />
 
       {/* Date Range Selector */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="bg-white rounded-lg shadow p-6 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Select Date Range
         </h2>
 
@@ -104,7 +127,7 @@ export default function PaymentsPage() {
             className={`px-4 py-2 rounded-lg font-medium ${
               dateRange === 'this-week'
                 ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
             This Week
@@ -114,7 +137,7 @@ export default function PaymentsPage() {
             className={`px-4 py-2 rounded-lg font-medium ${
               dateRange === 'last-week'
                 ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
             Last Week
@@ -124,7 +147,7 @@ export default function PaymentsPage() {
             className={`px-4 py-2 rounded-lg font-medium ${
               dateRange === 'custom'
                 ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
             Custom Range
@@ -134,25 +157,25 @@ export default function PaymentsPage() {
         {dateRange === 'custom' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Start Date
               </label>
               <input
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 End Date
               </label>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               />
             </div>
           </div>
@@ -163,7 +186,7 @@ export default function PaymentsPage() {
             type="button"
             onClick={handleExportCsv}
             disabled={exporting || (dateRange === 'custom' && (!customStart || !customEnd))}
-            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             {exporting ? 'Exporting...' : 'Export CSV'}
           </button>
@@ -171,37 +194,37 @@ export default function PaymentsPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700 dark:text-gray-400">
           Loading report...
         </div>
       ) : reportData ? (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-sm font-medium text-gray-600">
+            <div className="bg-white rounded-lg shadow p-6 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Total Received
               </div>
               <div className="mt-2 text-3xl font-bold text-green-600">
                 {formatCurrency(reportData.totalAmount)}
               </div>
-              <div className="mt-1 text-sm text-gray-500">
+              <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {reportData.totalCount} payments
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-sm font-medium text-gray-600">
+            <div className="bg-white rounded-lg shadow p-6 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Date Range
               </div>
-              <div className="mt-2 text-lg font-semibold text-gray-900">
+              <div className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {reportData.startDate}
               </div>
-              <div className="text-sm text-gray-500">to {reportData.endDate}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">to {reportData.endDate}</div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-sm font-medium text-gray-600">
+            <div className="bg-white rounded-lg shadow p-6 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Daily Average
               </div>
               <div className="mt-2 text-3xl font-bold text-primary-600">
@@ -211,20 +234,20 @@ export default function PaymentsPage() {
           </div>
 
           {/* By Payment Method */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white rounded-lg shadow p-6 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               By Payment Method
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {Object.entries(reportData.byMethod).map(([method, data]: [string, any]) => (
-                <div key={method} className="bg-gray-50 rounded-lg p-4">
-                  <div className="text-sm font-medium text-gray-600">
+              {Object.entries(reportData.byMethod).map(([method, data]) => (
+                <div key={method} className="bg-gray-50 rounded-lg p-4 dark:bg-gray-700">
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     {method}
                   </div>
-                  <div className="mt-1 text-2xl font-bold text-gray-900">
+                  <div className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {formatCurrency(data.total)}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     {data.count} payment{data.count !== 1 ? 's' : ''}
                   </div>
                 </div>
@@ -233,27 +256,27 @@ export default function PaymentsPage() {
           </div>
 
           {/* Daily Breakdown */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white rounded-lg shadow p-6 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Daily Breakdown
             </h2>
             <div className="space-y-3">
-              {reportData.byDay.map((day: any) => (
+              {reportData.byDay.map((day) => (
                 <div
                   key={day.date}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-gray-700"
                 >
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
                       {day.dayName}
                     </div>
-                    <div className="text-sm text-gray-500">{day.date}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{day.date}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold text-green-600">
                       {formatCurrency(day.total)}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {day.count} payment{day.count !== 1 ? 's' : ''}
                     </div>
                   </div>
@@ -263,52 +286,52 @@ export default function PaymentsPage() {
           </div>
 
           {/* All Payments List */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
+          <div className="bg-white rounded-lg shadow dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 All Payments ({reportData.allPayments.length})
               </h2>
             </div>
 
             {reportData.allPayments.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                 No payments in this period
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Date & Time
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Customer
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Order
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Method
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Amount
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {reportData.allPayments.map((payment: any) => (
-                      <tr key={payment.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                    {reportData.allPayments.map((payment) => (
+                      <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {formatDateTime(payment.paymentDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
                             {payment.order.customer.fullName}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
                             {payment.order.orderNumber}
                           </div>
                         </td>
