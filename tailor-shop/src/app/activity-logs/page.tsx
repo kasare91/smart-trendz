@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { formatDateTime } from '@/lib/utils';
+import PageHeader from '@/components/PageHeader';
 
 type ActivityLog = {
   id: string;
@@ -27,9 +28,9 @@ type Pagination = {
 };
 
 const ACTION_STYLES: Record<string, string> = {
-  CREATE: 'bg-green-100 text-green-800',
-  UPDATE: 'bg-amber-100 text-amber-800',
-  DELETE: 'bg-red-100 text-red-800',
+  CREATE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  UPDATE: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
 const ENTITIES = ['ORDER', 'CUSTOMER', 'PAYMENT', 'USER', 'MEASUREMENT', 'FABRIC_STOCK'];
@@ -86,11 +87,6 @@ export default function ActivityLogsPage() {
     if (status === 'authenticated') fetchLogs();
   }, [fetchLogs, status]);
 
-  const handleFilterChange = () => {
-    setPage(1);
-    fetchLogs();
-  };
-
   const filteredLogs = filterSearch
     ? logs.filter(
         (l) =>
@@ -101,35 +97,28 @@ export default function ActivityLogsPage() {
     : logs;
 
   if (status === 'loading') {
-    return <div className="p-8 text-center text-gray-500">Loading...</div>;
+    return <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Activity Log</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Audit trail of all mutations — who did what and when
-          {!isAdmin && ' (your branch only)'}
-        </p>
-      </div>
+      <PageHeader title="Activity Log" subtitle="Audit trail of all actions across branches" />
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 dark:bg-gray-800 dark:border-gray-700">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <input
             type="text"
             placeholder="Search user or description..."
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
           />
 
           <select
             value={filterEntity}
             onChange={(e) => { setFilterEntity(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
           >
             <option value="">All entities</option>
             {ENTITIES.map((e) => (
@@ -140,7 +129,7 @@ export default function ActivityLogsPage() {
           <select
             value={filterAction}
             onChange={(e) => { setFilterAction(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
           >
             <option value="">All actions</option>
             {ACTIONS.map((a) => (
@@ -153,14 +142,14 @@ export default function ActivityLogsPage() {
               type="date"
               value={filterStartDate}
               onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               aria-label="Start date"
             />
             <input
               type="date"
               value={filterEndDate}
               onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               aria-label="End date"
             />
           </div>
@@ -184,63 +173,63 @@ export default function ActivityLogsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden dark:bg-gray-800 dark:border-gray-700">
         {error && (
-          <div className="p-4 bg-red-50 border-b border-red-200 text-red-700 text-sm">{error}</div>
+          <div className="p-4 bg-red-50 border-b border-red-200 text-red-700 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">{error}</div>
         )}
 
         {loading ? (
           <div className="p-8 text-center">
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+                <div key={i} className="h-12 bg-gray-100 rounded animate-pulse dark:bg-gray-700" />
               ))}
             </div>
           </div>
         ) : filteredLogs.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            <svg className="mx-auto w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="p-12 text-center text-gray-500 dark:text-gray-400">
+            <svg className="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            <p className="font-medium">No activity found</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">No activity found</p>
             <p className="text-sm mt-1">Try adjusting your filters</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-50 border-b border-gray-200 dark:bg-gray-700/50 dark:border-gray-700">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">When</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">User</th>
-                  {isAdmin && <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Branch</th>}
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Action</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Entity</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Description</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">When</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">User</th>
+                  {isAdmin && <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Branch</th>}
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Action</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Entity</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Description</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap font-mono text-xs">
+                  <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap font-mono text-xs">
                       {formatDateTime(log.createdAt)}
                     </td>
-                    <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium">
+                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100 whitespace-nowrap font-medium">
                       {log.userName}
                     </td>
                     {isAdmin && (
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {log.branch?.name ?? '—'}
                       </td>
                     )}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${ACTION_STYLES[log.action] ?? 'bg-gray-100 text-gray-700'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${ACTION_STYLES[log.action] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>
                         {log.action}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {log.entity.replace('_', ' ')}
                     </td>
-                    <td className="px-4 py-3 text-gray-700 max-w-xs truncate" title={log.description}>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-xs truncate" title={log.description}>
                       {log.description}
                     </td>
                   </tr>
@@ -252,8 +241,8 @@ export default function ActivityLogsPage() {
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-            <p className="text-sm text-gray-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Showing {((pagination.page - 1) * pagination.pageSize) + 1}–
               {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total}
             </p>
@@ -261,17 +250,17 @@ export default function ActivityLogsPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={pagination.page <= 1}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
               >
                 Previous
               </button>
-              <span className="px-3 py-1.5 text-sm text-gray-700">
+              <span className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300">
                 Page {pagination.page} of {pagination.totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={pagination.page >= pagination.totalPages}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
               >
                 Next
               </button>
