@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import SessionProvider from "@/components/SessionProvider";
+import ThemeProvider from "@/components/ThemeProvider";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import SetupGate from "@/components/SetupGate";
@@ -37,25 +38,31 @@ export default async function RootLayout({
   const businessProfile = await getBusinessProfile();
 
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body className={inter.className}>
-        <SessionProvider>
-          <BusinessTitle businessName={businessProfile?.businessName} />
-          <SetupGate />
-          <div className="min-h-screen bg-gray-50">
-            <Navigation businessProfile={businessProfile} />
-            <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl">
-              {children}
-            </main>
-          </div>
-          <OfflineIndicator />
-          <ServiceWorkerRegistration />
-        </SessionProvider>
+      <body className={`${inter.className} h-full`}>
+        <ThemeProvider>
+          <SessionProvider>
+            <BusinessTitle businessName={businessProfile?.businessName} />
+            <SetupGate />
+            <div className="flex h-full bg-gray-50 dark:bg-gray-900">
+              <Navigation businessProfile={businessProfile} />
+              <div className="flex-1 flex flex-col min-h-full md:ml-60">
+                {/* Spacer for mobile top bar */}
+                <div className="h-14 md:hidden" />
+                <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
+                  {children}
+                </main>
+              </div>
+            </div>
+            <OfflineIndicator />
+            <ServiceWorkerRegistration />
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
