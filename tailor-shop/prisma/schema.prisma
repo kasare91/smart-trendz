@@ -17,7 +17,11 @@ model Tenant {
   slug      String       @unique
   status    TenantStatus @default(ACTIVE)
   createdAt DateTime     @default(now())
-  plan      String       @default("FREE")
+  plan                 String       @default("FREE")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  planStatus           String       @default("FREE")
+  trialEndsAt          DateTime?
 
   businessProfile BusinessProfile?
   users           User[]
