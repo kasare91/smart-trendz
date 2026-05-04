@@ -17,6 +17,7 @@ model Tenant {
   slug      String       @unique
   status    TenantStatus @default(ACTIVE)
   createdAt DateTime     @default(now())
+  plan      String       @default("FREE")
 
   businessProfile BusinessProfile?
   users           User[]
@@ -212,6 +213,9 @@ model User {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  emailVerified            Boolean   @default(true)
+  emailVerificationToken   String?   @unique
+  emailVerificationExpires DateTime?
 
   branch    Branch?  @relation(fields: [branchId], references: [id])
   passwordResetTokens PasswordResetToken[]

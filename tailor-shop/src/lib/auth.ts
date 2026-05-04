@@ -38,6 +38,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Account is inactive. Please contact an administrator.');
         }
 
+        if (!user.emailVerified) {
+          throw new Error('Please verify your email address before logging in.');
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
