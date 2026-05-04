@@ -8,11 +8,25 @@ import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import SkeletonList from '@/components/SkeletonList';
 
+interface Customer {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+  email?: string | null;
+  _count?: { orders: number };
+}
+
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export default function CustomersPage() {
   const { data: session } = useSession();
   const canCreate = session?.user?.role === 'ADMIN' || session?.user?.role === 'STAFF';
-  const [customers, setCustomers] = useState([]);
-  const [pagination, setPagination] = useState<any>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -56,18 +70,18 @@ export default function CustomersPage() {
       />
 
       {/* Search */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or phone number..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
         />
       </div>
 
       {/* Customers List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
         {loading ? (
           <SkeletonList rows={6} cols={4} />
         ) : customers.length === 0 ? (
@@ -82,31 +96,31 @@ export default function CustomersPage() {
             action={{ label: 'Add customer', href: '/customers/new' }}
           />
         ) : (
-          <div className="divide-y divide-gray-200">
-            {customers.map((customer: any) => (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {customers.map((customer) => (
               <Link
                 key={customer.id}
                 href={`/customers/${customer.id}`}
-                className="block p-6 hover:bg-gray-50 transition-colors"
+                className="block p-6 hover:bg-gray-50 transition-colors dark:hover:bg-gray-700"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {customer.fullName}
                     </h3>
                     <div className="mt-1 space-y-1">
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         Phone: {customer.phoneNumber}
                       </p>
                       {customer.email && (
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           Email: {customer.email}
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-gray-500">Orders</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Orders</div>
                     <div className="text-2xl font-bold text-primary-600">
                       {customer._count?.orders || 0}
                     </div>

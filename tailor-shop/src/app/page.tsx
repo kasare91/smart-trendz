@@ -136,14 +136,14 @@ export default async function DashboardPage() {
       </div>
 
       {/* Upcoming Orders Section */}
-      <div className="bg-white rounded-xl shadow-card border border-gray-100">
-        <div className="px-6 py-5 border-b border-gray-100">
+      <div className="bg-white rounded-xl shadow-card border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Upcoming & Overdue Orders
               </h2>
-              <p className="mt-0.5 text-sm text-gray-500">
+              <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                 Orders requiring attention
               </p>
             </div>
@@ -195,8 +195,8 @@ export default async function DashboardPage() {
             data.upcomingOrders.due5Days.length === 0 && (
               <div className="text-center py-12">
                 <div className="text-5xl mb-3">🎉</div>
-                <p className="text-gray-500 font-medium">All clear!</p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-gray-500 dark:text-gray-400 font-medium">All clear!</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                   No orders due in the next 5 days
                 </p>
               </div>
@@ -223,10 +223,10 @@ function StatCard({
   iconColor?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6 hover:shadow-lg transition-shadow">
+    <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6 hover:shadow-lg transition-shadow dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{title}</p>
           <p className={`text-3xl font-bold tracking-tight ${valueColor}`}>
             {value}
           </p>
@@ -239,16 +239,18 @@ function StatCard({
   );
 }
 
+type OrderWithRelations = Awaited<ReturnType<typeof getDashboardData>>['upcomingOrders']['overdue'][number];
+
 function UrgencySection({
   title,
   orders,
 }: {
   title: string;
-  orders: any[];
+  orders: OrderWithRelations[];
 }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">{title}</h3>
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{title}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {orders.map((order) => {
           const enriched = enrichOrder(order);
