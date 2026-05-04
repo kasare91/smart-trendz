@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { BusinessProfile } from '@prisma/client';
 import BusinessLogo from './BusinessLogo';
 import { DEFAULT_BUSINESS_NAME } from '@/lib/business-profile';
@@ -118,11 +118,10 @@ export default function Navigation({ businessProfile }: { businessProfile?: Busi
   const pathname = usePathname();
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'));
-  }, []);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+  });
 
   const isAdmin = session?.user?.role === 'ADMIN';
   const businessName = businessProfile?.businessName || DEFAULT_BUSINESS_NAME;

@@ -11,6 +11,7 @@ import {
 } from '@/lib/utils';
 import DashboardOrderCard from '@/components/DashboardOrderCard';
 import { getBusinessProfile, DEFAULT_BUSINESS_NAME } from '@/lib/business-profile';
+import PageHeader from '@/components/PageHeader';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -105,12 +106,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-        <p className="mt-1.5 text-sm text-gray-500">
-          Welcome back to {data.businessName}
-        </p>
-      </div>
+      <PageHeader title="Dashboard" subtitle="Overview of your boutique operations" />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
