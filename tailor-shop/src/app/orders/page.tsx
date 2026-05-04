@@ -66,7 +66,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentModal, setPaymentModal] = useState<{
     isOpen: boolean;
-    order: Order | null;
+    order: EnrichedOrder | null;
   }>({ isOpen: false, order: null });
 
   useEffect(() => {
@@ -94,8 +94,8 @@ export default function OrdersPage() {
   const handleReceivePayment = (e: React.MouseEvent, order: Order) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Opening payment modal for order:', order.orderNumber);
-    setPaymentModal({ isOpen: true, order });
+    const enriched = enrichedOrders.find((eo) => eo.id === order.id) ?? null;
+    setPaymentModal({ isOpen: true, order: enriched });
   };
 
   const handlePaymentSuccess = () => {
@@ -126,9 +126,7 @@ export default function OrdersPage() {
     }
   };
 
-  // Cast is safe: API returns plain objects; dueDate comes as string from JSON
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const enrichedOrders = orders.map((o) => enrichOrder(o as any)) as unknown as EnrichedOrder[];
+  const enrichedOrders = orders.map(enrichOrder) as unknown as EnrichedOrder[];
 
   // Calculate totals
   const totals = enrichedOrders.reduce(
@@ -425,7 +423,7 @@ export default function OrdersPage() {
           orderNumber={paymentModal.order.orderNumber}
           customerName={paymentModal.order.customer.fullName}
           totalAmount={paymentModal.order.totalAmount}
-          amountPaid={(paymentModal.order as EnrichedOrder).amountPaid ?? 0}
+          amountPaid={paymentModal.order?.amountPaid ?? 0}
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}

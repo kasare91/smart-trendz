@@ -10,12 +10,23 @@ export type OrderWithRelations = Order & {
   customer: Customer;
 };
 
+/**
+ * Minimal shape required by enrichOrder. Accepts dueDate as Date | string so
+ * the function can handle both Prisma model objects (Date) and client-side
+ * JSON-deserialised objects (string) without an `as any` cast.
+ */
+export type EnrichOrderInput = {
+  totalAmount: number;
+  dueDate: Date | string;
+  payments: { amount: number }[];
+};
+
 export type DueDateUrgency = 'safe' | 'warning-5' | 'warning-3' | 'warning-1' | 'overdue';
 
 /**
  * Calculate the total amount paid for an order
  */
-export function calculateAmountPaid(payments: Payment[]): number {
+export function calculateAmountPaid(payments: { amount: number }[]): number {
   return payments.reduce((sum, payment) => sum + payment.amount, 0);
 }
 
@@ -30,7 +41,7 @@ export function calculateBalance(totalAmount: number, amountPaid: number): numbe
  * Calculate days remaining until due date
  * Positive = days remaining, Negative = days overdue
  */
-export function calculateDaysToDue(dueDate: Date): number {
+export function calculateDaysToDue(dueDate: Date | string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const due = new Date(dueDate);
@@ -41,7 +52,7 @@ export function calculateDaysToDue(dueDate: Date): number {
 /**
  * Determine urgency level based on days to due date
  */
-export function getDueDateUrgency(dueDate: Date): DueDateUrgency {
+export function getDueDateUrgency(dueDate: Date | string): DueDateUrgency {
   const days = calculateDaysToDue(dueDate);
 
   if (days <= 0) return 'overdue';
@@ -170,7 +181,7 @@ export function generateOrderNumber(lastOrderNumber: string | null, prefix = 'OR
 /**
  * Enrich order with computed fields
  */
-export function enrichOrder<T extends OrderWithPayments | OrderWithRelations>(order: T) {
+export function enrichOrder<T extends EnrichOrderInput>(order: T) {
   const amountPaid = calculateAmountPaid(order.payments);
   const balance = calculateBalance(order.totalAmount, amountPaid);
   const daysToDue = calculateDaysToDue(order.dueDate);
