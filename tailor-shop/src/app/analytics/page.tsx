@@ -3,11 +3,33 @@
 import { useEffect, useState } from 'react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
+import PageHeader from '@/components/PageHeader';
 
 const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
+interface MonthlyRevenue { month: string; revenue: number }
+interface PaymentMethodStat { method: string; count: number; total: number }
+interface OrderStatusStat { status: string; count: number }
+interface CustomerLTV {
+  customerId: string;
+  customerName: string;
+  phoneNumber: string;
+  totalOrders: number;
+  totalSpent: number;
+  averageOrderValue: number;
+}
+interface PopularItem { item: string; count: number; revenue: number }
+interface AnalyticsData {
+  overview: { totalRevenue: number; totalOrders: number; activeOrders: number; totalCustomers: number };
+  monthlyRevenue: MonthlyRevenue[];
+  paymentMethodStats: PaymentMethodStat[];
+  orderStatusStats: OrderStatusStat[];
+  customerLTV: CustomerLTV[];
+  popularItems: PopularItem[];
+}
+
 export default function AnalyticsPage() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,13 +67,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Analytics</h1>
-        <p className="mt-1.5 text-sm text-gray-500">
-          Business insights and performance metrics
-        </p>
-      </div>
+      <PageHeader title="Analytics" subtitle="Business insights and performance metrics" />
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -82,8 +98,8 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Monthly Revenue Chart */}
-      <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Monthly Revenue (Last 6 Months)
         </h2>
         <ResponsiveContainer width="100%" height={300}>
@@ -92,7 +108,7 @@ export default function AnalyticsPage() {
             <XAxis dataKey="month" stroke="#6b7280" />
             <YAxis stroke="#6b7280" />
             <Tooltip
-              formatter={(value: any) => formatCurrency(value)}
+              formatter={(value: number) => formatCurrency(value)}
               contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
             />
             <Legend />
@@ -103,8 +119,8 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Payment Methods */}
-        <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Payment Methods
           </h2>
           <ResponsiveContainer width="100%" height={250}>
@@ -119,18 +135,18 @@ export default function AnalyticsPage() {
                 fill="#8884d8"
                 dataKey="total"
               >
-                {data.paymentMethodStats.map((entry: any, index: number) => (
+                {data.paymentMethodStats.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: any) => formatCurrency(value)} />
+              <Tooltip formatter={(value: number) => formatCurrency(value)} />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         {/* Order Status */}
-        <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Order Status Distribution
           </h2>
           <ResponsiveContainer width="100%" height={250}>
@@ -146,58 +162,58 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Top Customers */}
-      <div className="bg-white rounded-xl shadow-card border border-gray-100">
-        <div className="px-6 py-5 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="bg-white rounded-xl shadow-card border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Top Customers by Lifetime Value
           </h2>
-          <p className="mt-0.5 text-sm text-gray-500">
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
             Your most valuable customers
           </p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Rank
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Phone
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Orders
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Total Spent
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Avg Order
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {data.customerLTV.map((customer: any, index: number) => (
-                <tr key={customer.customerId} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+              {data.customerLTV.map((customer, index) => (
+                <tr key={customer.customerId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                     #{index + 1}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {customer.customerName}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {customer.phoneNumber}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100">
                     {customer.totalOrders}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-emerald-600">
                     {formatCurrency(customer.totalSpent)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
                     {formatCurrency(customer.averageOrderValue)}
                   </td>
                 </tr>
@@ -208,28 +224,28 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Popular Items */}
-      <div className="bg-white rounded-xl shadow-card border border-gray-100">
-        <div className="px-6 py-5 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="bg-white rounded-xl shadow-card border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Popular Items
           </h2>
-          <p className="mt-0.5 text-sm text-gray-500">
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
             Most frequently ordered items
           </p>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.popularItems.map((item: any, index: number) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            {data.popularItems.map((item, index) => (
+              <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-900 capitalize">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
                     {item.item}
                   </span>
                   <span className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded-full font-medium">
                     #{index + 1}
                   </span>
                 </div>
-                <div className="text-xs text-gray-600 space-y-1">
+                <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
                   <div>Orders: <span className="font-semibold">{item.count}</span></div>
                   <div>Revenue: <span className="font-semibold text-emerald-600">{formatCurrency(item.revenue)}</span></div>
                 </div>
@@ -261,11 +277,11 @@ function StatCard({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6">
+    <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 tracking-tight">
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
             {value}
           </p>
         </div>
