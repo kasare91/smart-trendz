@@ -8,6 +8,7 @@ import { getPagination, paginationResponse } from '@/lib/pagination';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { getBusinessProfile, DEFAULT_INVOICE_PREFIX } from '@/lib/business-profile';
 import { Prisma } from '@prisma/client';
+import { getPlanAccess, isFreePlan } from '@/lib/billing';
 
 // Force dynamic rendering for this route
 export const runtime = 'nodejs';
@@ -124,6 +125,22 @@ export async function POST(request: NextRequest) {
     // Validation
     if (!customerId || !description || !totalAmount || !orderDate || !dueDate) {
       throw new ValidationError('Missing required fields');
+    }
+
+    // Plan limit enforcement: FREE plan capped at 50 orders/month
+    if (user.tenantId) {
+      const access = await getPlanAccess(user.tenantId);
+      if (isFreePlan(access)) {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const count = await prisma.order.count({
+          where: { branch: { tenantId: user.tenantId }, createdAt: { gte: startOfMonth } },
+        });
+        if (count >= 50) {
+          throw new ForbiddenError('Monthly order limit reached. Upgrade to PRO for unlimited orders.');
+        }
+      }
     }
 
     // Get customer to verify branch access and inherit branch
