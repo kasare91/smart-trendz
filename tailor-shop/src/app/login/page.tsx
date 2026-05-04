@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get('registered') === 'true';
+  const verified = searchParams.get('verified') === 'true';
+  const verifyError = searchParams.get('verifyError') === 'true';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('Tailor Desk');
@@ -72,6 +76,24 @@ export default function LoginPage() {
               </div>
             )}
 
+            {registered && (
+              <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm">
+                Account created — check your email to verify, then log in.
+              </div>
+            )}
+
+            {verified && (
+              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm">
+                Email verified! You can now log in.
+              </div>
+            )}
+
+            {verifyError && (
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm">
+                Verification link expired or invalid.
+              </div>
+            )}
+
             <div>
               <label
                 htmlFor="email"
@@ -121,12 +143,15 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-3">
             <Link href="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">
               Forgot your password?
             </Link>
-            <p className="text-xs text-gray-500">
-              Contact your administrator for account access
+            <p className="text-sm text-gray-600">
+              Don&apos;t have an account?{' '}
+              <Link href="/signup" className="text-primary-600 hover:text-primary-700 font-medium">
+                Sign up
+              </Link>
             </p>
           </div>
         </div>
