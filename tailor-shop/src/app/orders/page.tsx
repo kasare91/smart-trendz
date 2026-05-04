@@ -8,18 +8,65 @@ import {
   enrichOrder,
   getUrgencyColor,
   getUrgencyLabel,
+  DueDateUrgency,
 } from '@/lib/utils';
 import PaymentModal from '@/components/PaymentModal';
+import PageHeader from '@/components/PageHeader';
+import EmptyState from '@/components/EmptyState';
+import SkeletonList from '@/components/SkeletonList';
+
+interface OrderCustomer {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+}
+
+interface OrderPayment {
+  id: string;
+  amount: number;
+}
+
+interface Order {
+  id: string;
+  orderNumber: string;
+  description: string;
+  status: string;
+  totalAmount: number;
+  dueDate: string;
+  customer: OrderCustomer;
+  payments: OrderPayment[];
+}
+
+interface EnrichedOrder {
+  id: string;
+  orderNumber: string;
+  description: string;
+  status: string;
+  totalAmount: number;
+  dueDate: string;
+  customer: OrderCustomer;
+  payments: OrderPayment[];
+  amountPaid: number;
+  balance: number;
+  urgency: DueDateUrgency;
+  daysToDue: number;
+}
+
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+}
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [pagination, setPagination] = useState<any>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentModal, setPaymentModal] = useState<{
     isOpen: boolean;
-    order: any | null;
+    order: EnrichedOrder | null;
   }>({ isOpen: false, order: null });
 
   useEffect(() => {
@@ -44,11 +91,11 @@ export default function OrdersPage() {
     }
   };
 
-  const handleReceivePayment = (e: React.MouseEvent, order: any) => {
+  const handleReceivePayment = (e: React.MouseEvent, order: Order) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Opening payment modal for order:', order.orderNumber);
-    setPaymentModal({ isOpen: true, order });
+    const enriched = enrichedOrders.find((eo) => eo.id === order.id) ?? null;
+    setPaymentModal({ isOpen: true, order: enriched });
   };
 
   const handlePaymentSuccess = () => {
@@ -79,7 +126,7 @@ export default function OrdersPage() {
     }
   };
 
-  const enrichedOrders = orders.map(enrichOrder);
+  const enrichedOrders = orders.map(enrichOrder) as unknown as EnrichedOrder[];
 
   // Calculate totals
   const totals = enrichedOrders.reduce(
@@ -93,26 +140,24 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage all customer orders
-          </p>
-        </div>
-        <Link
-          href="/orders/new"
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
-        >
-          + New Order
-        </Link>
-      </div>
+      <PageHeader
+        title="Orders"
+        subtitle="Manage all customer orders"
+        action={
+          <Link
+            href="/orders/new"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm"
+          >
+            + New Order
+          </Link>
+        }
+      />
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4 dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
               Search
             </label>
             <input
@@ -120,17 +165,17 @@ export default function OrdersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Order number, customer name, description..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
               Status
             </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             >
               <option value="">All Statuses</option>
               <option value="PENDING">Pending</option>
@@ -144,69 +189,76 @@ export default function OrdersPage() {
       </div>
 
       {/* Orders List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden dark:bg-gray-800 dark:shadow-none dark:border dark:border-gray-700">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
+          <SkeletonList rows={6} cols={5} />
         ) : enrichedOrders.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No orders found. Create your first order!
-          </div>
+          <EmptyState
+            icon={
+              <svg width={48} height={48} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+              </svg>
+            }
+            title="No orders yet"
+            body="Create your first order to start tracking work for customers."
+            action={{ label: 'New order', href: '/orders/new' }}
+          />
         ) : (
           <>
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       Order
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       Customer
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       Due Date
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       Total
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       Paid
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       Balance
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                   {enrichedOrders.map((order) => {
                     const colors = getUrgencyColor(order.urgency);
                     const hasBalance = order.balance > 0;
                     return (
                       <tr
                         key={order.id}
-                        className={`hover:bg-gray-50 ${colors.bg}`}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${colors.bg}`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             {order.orderNumber}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
                             {order.description.substring(0, 40)}
                             {order.description.length > 40 && '...'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
                             {order.customer.fullName}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
                             {order.customer.phoneNumber}
                           </div>
                         </td>
@@ -214,14 +266,14 @@ export default function OrdersPage() {
                           <StatusBadge status={order.status} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
                             {formatDate(order.dueDate)}
                           </div>
                           <div className={`text-sm font-medium ${colors.text}`}>
                             {getUrgencyLabel(order.urgency, order.daysToDue)}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100">
                           {formatCurrency(order.totalAmount)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-green-600">
@@ -266,7 +318,7 @@ export default function OrdersPage() {
             </div>
 
             {/* Mobile Cards */}
-            <div className="md:hidden divide-y divide-gray-200">
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
               {enrichedOrders.map((order) => {
                 const colors = getUrgencyColor(order.urgency);
                 const hasBalance = order.balance > 0;
@@ -278,21 +330,21 @@ export default function OrdersPage() {
                     <Link href={`/orders/${order.id}`}>
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <div className="font-semibold text-gray-900">
+                          <div className="font-semibold text-gray-900 dark:text-gray-100">
                             {order.orderNumber}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
                             {order.customer.fullName}
                           </div>
                         </div>
                         <StatusBadge status={order.status} />
                       </div>
-                      <div className="text-sm text-gray-600 mb-2">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                         {order.description}
                       </div>
                       <div className="flex items-center justify-between text-sm mb-3">
                         <div>
-                          <div className="text-gray-500">
+                          <div className="text-gray-500 dark:text-gray-400">
                             Due: {formatDate(order.dueDate)}
                           </div>
                           <div className={`font-medium ${colors.text}`}>
@@ -303,7 +355,7 @@ export default function OrdersPage() {
                           <div className="text-orange-600 font-bold">
                             {formatCurrency(order.balance)}
                           </div>
-                          <div className="text-gray-500">balance</div>
+                          <div className="text-gray-500 dark:text-gray-400">balance</div>
                         </div>
                       </div>
                     </Link>
@@ -331,26 +383,26 @@ export default function OrdersPage() {
             </div>
 
             {/* Totals */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 dark:bg-gray-700/50 dark:border-gray-600">
               <div className="flex items-center justify-between text-sm font-medium">
-                <span className="text-gray-700">
+                <span className="text-gray-700 dark:text-gray-300">
                   Totals ({pagination?.total || enrichedOrders.length} orders)
                 </span>
                 <div className="flex space-x-6">
                   <div>
-                    <span className="text-gray-500">Total: </span>
-                    <span className="text-gray-900">
+                    <span className="text-gray-500 dark:text-gray-400">Total: </span>
+                    <span className="text-gray-900 dark:text-gray-100">
                       {formatCurrency(totals.total)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Paid: </span>
+                    <span className="text-gray-500 dark:text-gray-400">Paid: </span>
                     <span className="text-green-600">
                       {formatCurrency(totals.paid)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Balance: </span>
+                    <span className="text-gray-500 dark:text-gray-400">Balance: </span>
                     <span className="text-orange-600 font-bold">
                       {formatCurrency(totals.balance)}
                     </span>
@@ -371,7 +423,7 @@ export default function OrdersPage() {
           orderNumber={paymentModal.order.orderNumber}
           customerName={paymentModal.order.customer.fullName}
           totalAmount={paymentModal.order.totalAmount}
-          amountPaid={paymentModal.order.amountPaid}
+          amountPaid={paymentModal.order?.amountPaid ?? 0}
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}
