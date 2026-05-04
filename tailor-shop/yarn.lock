@@ -3101,6 +3101,11 @@ strip-ansi@^7.0.1:
   dependencies:
     ansi-regex "^6.0.1"
 
+stripe@^22.1.0:
+  version "22.1.0"
+  resolved "https://registry.npmjs.org/stripe/-/stripe-22.1.0.tgz#2873bf0a9e135c69e06b65d37e0f528fa5eadfa3"
+  integrity sha512-w/xHyJGxXWnLPbNHG13sz/fae0MrFGC80Oz7YbICQymbfpqfEcsoG+6yG+9BWb81PWc4rrkeSO4wmTcmefmbLw==
+
 strnum@^2.1.0:
   version "2.1.1"
   resolved "https://registry.npmjs.org/strnum/-/strnum-2.1.1.tgz"
