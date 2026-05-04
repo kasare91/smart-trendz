@@ -18,12 +18,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/business-profile')
-      .then((response) => response.json())
-      .then((data) => {
+    (async () => {
+      try {
+        const response = await fetch('/api/business-profile');
+        const data: { data?: { businessName?: string } } = await response.json();
         if (data.data?.businessName) setBusinessName(data.data.businessName);
-      })
-      .catch(() => undefined);
+      } catch {
+        // ignore
+      }
+    })();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +47,7 @@ export default function LoginPage() {
         router.push('/');
         router.refresh();
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);

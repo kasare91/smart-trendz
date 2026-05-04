@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { handleApiError, ValidationError } from '@/lib/errors';
+import { handleApiError, ValidationError, ConflictError } from '@/lib/errors';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 function generateSlug(name: string): string {
-  return name
+  const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .substring(0, 50);
+  return slug || 'boutique';
 }
 
 async function sendVerificationEmail(
@@ -19,8 +20,9 @@ async function sendVerificationEmail(
   verificationUrl: string
 ): Promise<void> {
   const subject = 'Verify your Tailor Desk account';
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const html = `
-    <p>Hi ${ownerName},</p>
+    <p>Hi ${esc(ownerName)},</p>
     <p>Thanks for signing up for Tailor Desk. Click the link below to verify your email address:</p>
     <p><a href="${verificationUrl}">${verificationUrl}</a></p>
     <p>This link expires in 24 hours.</p>
@@ -59,29 +61,40 @@ async function sendVerificationEmail(
 
 export async function POST(request: NextRequest) {
   try {
-    const limited = rateLimit(request, { key: 'auth:signup', ...RATE_LIMITS.auth });
+    const limited = rateLimit(request, { key: 'auth:signup', ...RATE_LIMITS.signup });
     if (limited) return limited;
 
-    const body = await request.json() as Record<string, string>;
-    const { businessName, ownerName, email, password, branchName, branchLocation } = body;
-
-    if (!businessName || !ownerName || !email || !password || !branchName || !branchLocation) {
+    const raw: unknown = await request.json();
+    if (typeof raw !== 'object' || raw === null) throw new ValidationError('Invalid request body');
+    const { businessName, ownerName, email, password, branchName, branchLocation } =
+      raw as Record<string, unknown>;
+    if (
+      typeof businessName !== 'string' ||
+      typeof ownerName !== 'string' ||
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      typeof branchName !== 'string' ||
+      typeof branchLocation !== 'string'
+    ) {
       throw new ValidationError('All fields are required');
     }
+
     if (password.length < 8) {
       throw new ValidationError('Password must be at least 8 characters');
     }
+    if (password.length > 128) {
+      throw new ValidationError('Password must be 128 characters or fewer');
+    }
 
-    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true } });
     if (existing) {
-      return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
+      throw new ConflictError('Email already registered');
     }
 
-    let slug = generateSlug(businessName);
-    const slugExists = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
-    if (slugExists) {
-      slug = `${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
-    }
+    const baseSlug = generateSlug(businessName);
+    const slug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const emailEnabled = process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true';
     const emailVerificationToken = emailEnabled ? crypto.randomBytes(32).toString('hex') : null;
@@ -101,7 +114,7 @@ export async function POST(request: NextRequest) {
 
       await tx.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           name: ownerName,
           password: passwordHash,
           role: 'ADMIN',
@@ -120,9 +133,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (emailEnabled && emailVerificationToken) {
-      const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+      const baseUrl = (process.env.NEXTAUTH_URL ?? 'http://localhost:3000').replace(/\/$/, '');
       const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${emailVerificationToken}`;
-      sendVerificationEmail(email, ownerName, verificationUrl).catch(() => undefined);
+      sendVerificationEmail(normalizedEmail, ownerName, verificationUrl).catch(() => undefined);
     }
 
     return NextResponse.json({ success: true, emailSent: emailEnabled }, { status: 201 });

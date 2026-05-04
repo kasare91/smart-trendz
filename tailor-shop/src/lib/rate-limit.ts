@@ -15,6 +15,7 @@ const buckets = new Map<string, Bucket>();
 
 export const RATE_LIMITS = {
   auth: { limit: 5, windowMs: 60 * 1000 },
+  signup: { limit: 3, windowMs: 15 * 60 * 1000 },
   passwordReset: { limit: 5, windowMs: 15 * 60 * 1000 },
   upload: { limit: 10, windowMs: 60 * 1000 },
   payment: { limit: 20, windowMs: 60 * 1000 },
