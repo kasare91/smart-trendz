@@ -140,7 +140,7 @@ export default function FabricStockPage() {
       />
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
           {error}
         </div>
       )}
@@ -262,7 +262,7 @@ export default function FabricStockPage() {
                           <button
                             type="button"
                             onClick={() => handleDelete(item)}
-                            className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
+                            className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
                           >
                             Delete
                           </button>

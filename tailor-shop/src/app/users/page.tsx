@@ -79,7 +79,7 @@ export default function UsersPage() {
         setError('Failed to fetch users');
       }
     } catch (err) {
-      setError('Error fetching users');
+      setError(err instanceof Error ? err.message : 'Error fetching users');
     } finally {
       setLoading(false);
     }
@@ -136,7 +136,7 @@ export default function UsersPage() {
         setError(data.error || 'Failed to save user');
       }
     } catch (err) {
-      setError('Error saving user');
+      setError(err instanceof Error ? err.message : 'Error saving user');
     }
   };
 
@@ -171,7 +171,7 @@ export default function UsersPage() {
         setError(data.error || 'Failed to update user');
       }
     } catch (err) {
-      setError('Error updating user');
+      setError(err instanceof Error ? err.message : 'Error updating user');
     }
   };
 
@@ -324,7 +324,7 @@ export default function UsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleEdit(user)}
-                      className="text-primary-600 hover:text-primary-900 mr-4"
+                      className="text-primary-600 hover:text-primary-900 dark:hover:text-primary-400 mr-4"
                     >
                       Edit
                     </button>
@@ -332,8 +332,8 @@ export default function UsersPage() {
                       onClick={() => handleToggleActive(user)}
                       className={`${
                         user.active
-                          ? 'text-red-600 hover:text-red-900'
-                          : 'text-green-600 hover:text-green-900'
+                          ? 'text-red-600 hover:text-red-900 dark:hover:text-red-400'
+                          : 'text-green-600 hover:text-green-900 dark:hover:text-green-400'
                       }`}
                     >
                       {user.active ? 'Deactivate' : 'Activate'}

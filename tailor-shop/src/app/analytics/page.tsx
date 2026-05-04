@@ -107,10 +107,7 @@ export default function AnalyticsPage() {
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="month" stroke="#6b7280" />
             <YAxis stroke="#6b7280" />
-            <Tooltip
-              formatter={(value: number) => formatCurrency(value)}
-              contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-            />
+            <Tooltip formatter={(value: number) => formatCurrency(value)} />
             <Legend />
             <Line type="monotone" dataKey="revenue" stroke="#0ea5e9" strokeWidth={2} name="Revenue" />
           </LineChart>
@@ -154,7 +151,7 @@ export default function AnalyticsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="status" stroke="#6b7280" />
               <YAxis stroke="#6b7280" />
-              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+              <Tooltip />
               <Bar dataKey="count" fill="#0ea5e9" />
             </BarChart>
           </ResponsiveContainer>
@@ -210,7 +207,7 @@ export default function AnalyticsPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100">
                     {customer.totalOrders}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-emerald-600">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(customer.totalSpent)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
@@ -241,13 +238,13 @@ export default function AnalyticsPage() {
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
                     {item.item}
                   </span>
-                  <span className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded-full font-medium">
+                  <span className="text-xs px-2 py-1 bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 rounded-full font-medium">
                     #{index + 1}
                   </span>
                 </div>
                 <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
                   <div>Orders: <span className="font-semibold">{item.count}</span></div>
-                  <div>Revenue: <span className="font-semibold text-emerald-600">{formatCurrency(item.revenue)}</span></div>
+                  <div>Revenue: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(item.revenue)}</span></div>
                 </div>
               </div>
             ))}
@@ -270,10 +267,10 @@ function StatCard({
   color?: 'blue' | 'emerald' | 'amber' | 'purple';
 }) {
   const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-    purple: 'bg-purple-50 text-purple-600',
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+    purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
   };
 
   return (

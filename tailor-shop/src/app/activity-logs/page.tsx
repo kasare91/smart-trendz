@@ -87,11 +87,6 @@ export default function ActivityLogsPage() {
     if (status === 'authenticated') fetchLogs();
   }, [fetchLogs, status]);
 
-  const handleFilterChange = () => {
-    setPage(1);
-    fetchLogs();
-  };
-
   const filteredLogs = filterSearch
     ? logs.filter(
         (l) =>

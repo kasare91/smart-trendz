@@ -205,7 +205,7 @@ export default function PaymentsPage() {
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Total Received
               </div>
-              <div className="mt-2 text-3xl font-bold text-green-600">
+              <div className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
                 {formatCurrency(reportData.totalAmount)}
               </div>
               <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -273,7 +273,7 @@ export default function PaymentsPage() {
                     <div className="text-sm text-gray-500 dark:text-gray-400">{day.date}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-bold text-green-600">
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400">
                       {formatCurrency(day.total)}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -336,11 +336,11 @@ export default function PaymentsPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                             {payment.paymentMethod}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-green-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-green-600 dark:text-green-400">
                           {formatCurrency(payment.amount)}
                         </td>
                       </tr>
