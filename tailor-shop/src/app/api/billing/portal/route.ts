@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/billing';
 import { handleApiError, ValidationError } from '@/lib/errors';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   try {
     const user = await requireRole(['ADMIN']);

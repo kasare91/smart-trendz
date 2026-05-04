@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { handleApiError } from '@/lib/errors';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    const user = await requireAuth();
+    const user = await requireRole(['ADMIN']);
     if (!user.tenantId) {
       return NextResponse.json({
         plan: 'FREE', planStatus: 'FREE', ordersThisMonth: 0,

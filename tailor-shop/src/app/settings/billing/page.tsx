@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 interface BillingStatus {
-  plan: string;
-  planStatus: string;
+  plan: 'FREE' | 'PRO';
+  planStatus: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'FREE';
   trialEndsAt: string | null;
   ordersThisMonth: number;
   orderLimit: number | null;
@@ -185,7 +185,9 @@ export default function BillingPage() {
 
   const isPro = status?.plan === 'PRO';
   const isCancelled = status?.planStatus === 'CANCELLED';
+  const isPastDue = status?.planStatus === 'PAST_DUE';
   const showUpgrade = !isPro || isCancelled;
+  const showPortal = !showUpgrade || isPastDue;
   const features = isPro ? PRO_FEATURES : FREE_FEATURES;
 
   return (
@@ -223,15 +225,16 @@ export default function BillingPage() {
               Status:{' '}
               <span className={`font-medium ${
                 status.planStatus === 'ACTIVE' ? 'text-emerald-600' :
-                status.planStatus === 'TRIALING' ? 'text-amber-600' :
+                status.planStatus === 'TRIAL' ? 'text-amber-600' :
                 status.planStatus === 'CANCELLED' ? 'text-red-600' :
+                status.planStatus === 'PAST_DUE' ? 'text-yellow-600' :
                 'text-gray-700'
               }`}>
                 {status.planStatus.charAt(0) + status.planStatus.slice(1).toLowerCase()}
               </span>
             </p>
 
-            {status.trialEndsAt && status.planStatus === 'TRIALING' && (
+            {status.trialEndsAt && status.planStatus === 'TRIAL' && (
               <TrialCountdown trialEndsAt={status.trialEndsAt} />
             )}
 
@@ -239,6 +242,12 @@ export default function BillingPage() {
               <OrderUsageBar used={status.ordersThisMonth} limit={status.orderLimit} />
             )}
           </div>
+
+          {status.planStatus === 'PAST_DUE' && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+              Your payment is past due. Please update your payment method to maintain access.
+            </div>
+          )}
 
           {/* Features List */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
@@ -267,7 +276,7 @@ export default function BillingPage() {
 
           {/* Action Button */}
           <div className="space-y-3">
-            {showUpgrade ? (
+            {showUpgrade && !isPastDue && (
               <button
                 onClick={handleUpgrade}
                 disabled={isActing}
@@ -281,11 +290,15 @@ export default function BillingPage() {
                     </svg>
                     Redirecting...
                   </>
+                ) : isCancelled ? (
+                  'Reactivate subscription'
                 ) : (
                   'Upgrade to PRO — $29/month'
                 )}
               </button>
-            ) : status.hasStripeCustomer ? (
+            )}
+
+            {(showPortal && status.hasStripeCustomer) && (
               <button
                 onClick={handleManage}
                 disabled={isActing}
@@ -299,11 +312,13 @@ export default function BillingPage() {
                     </svg>
                     Opening portal...
                   </>
+                ) : isPastDue ? (
+                  'Update payment method'
                 ) : (
                   'Manage subscription'
                 )}
               </button>
-            ) : null}
+            )}
 
             {error && (
               <p className="text-sm text-red-600 text-center px-2">{error}</p>

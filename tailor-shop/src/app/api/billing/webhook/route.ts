@@ -3,6 +3,8 @@ import { stripe, stripeStatusToPlanStatus } from '@/lib/billing';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const sig = request.headers.get('stripe-signature');
@@ -81,7 +83,10 @@ export async function POST(request: NextRequest) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
+        const customerId = typeof invoice.customer === 'string'
+          ? invoice.customer
+          : invoice.customer?.id;
+        if (!customerId) break;
         await prisma.tenant.updateMany({
           where: { stripeCustomerId: customerId },
           data: { planStatus: 'PAST_DUE' },
@@ -89,8 +94,8 @@ export async function POST(request: NextRequest) {
         break;
       }
     }
-  } catch {
-    console.error('Webhook processing error for event', event.id);
+  } catch (err) {
+    console.error('Webhook processing error for event', event.id, err);
   }
 
   return NextResponse.json({ received: true });
