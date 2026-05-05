@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { fetchCached } from '@/lib/client-cache';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -18,15 +19,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch('/api/business-profile');
-        const data: { data?: { businessName?: string } } = await response.json();
-        if (data.data?.businessName) setBusinessName(data.data.businessName);
-      } catch {
-        // ignore
-      }
-    })();
+    fetchCached(
+      'business-profile',
+      () => fetch('/api/business-profile').then(r => r.json()),
+    ).then((data) => {
+      const d = data as { data?: { businessName?: string } };
+      if (d.data?.businessName) setBusinessName(d.data.businessName);
+    }).catch(() => undefined);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -16,7 +16,10 @@ export async function GET(request: NextRequest) {
 
     const session = await requireAuth();
     const profile = await getBusinessProfile(session.tenantId);
-    return NextResponse.json({ data: profile, needsSetup: !profile });
+    return NextResponse.json(
+      { data: profile, needsSetup: !profile },
+      { headers: { 'Cache-Control': 'private, max-age=300' } }
+    );
   } catch (error) {
     return handleApiError(error, 'Error fetching business profile:');
   }
