@@ -1,72 +1,75 @@
 # Quick Start Guide
 
-Get your tailor shop app running in 5 minutes!
+Get your tailor shop app running in 5 minutes.
 
 ## Step 1: Install Dependencies
 
 ```bash
 cd tailor-shop
-npm install
+yarn install
 ```
 
-## Step 2: Setup Database
+## Step 2: Set Up the Database
 
 ```bash
-yarn run prisma:generate
-yarn run prisma:push
-yarn run prisma:seed
-
+yarn prisma:generate
+yarn prisma:push
+yarn prisma:seed
 ```
 
-## Step 3: Start the App
+This creates a SQLite dev database at `prisma/dev.db` with sample data.
+
+## Step 3: Configure Environment Variables
+
+Copy `.env.example` to `.env` and fill in at minimum:
+
+```env
+NEXTAUTH_URL=http://localhost:3003
+NEXTAUTH_SECRET=<run: openssl rand -base64 32>
+```
+
+## Step 4: Start the App
 
 ```bash
-npm run dev
+yarn dev
 ```
 
-## Step 4: Open in Browser
+Open **http://localhost:3003** in your browser.
 
-Visit: **http://localhost:3003**
+## Step 5: Log In
+
+| Email | Password | Role |
+|---|---|---|
+| `admin@example.com` | `admin123` | Admin (all branches) |
+| `accra@example.com` | `staff123` | Staff — Accra branch |
+| `koforidua@example.com` | `staff123` | Staff — Koforidua branch |
 
 ## What You'll See
 
-- **Dashboard**: Overview of active orders, balances, and upcoming due dates
-- **Orders**: 7 sample orders in different states (overdue, due today, due in 3 days, etc.)
-- **Customers**: 3 sample customers with their order history
-- **Payments**: Weekly payment reports and history
+- **Dashboard**: Active orders, outstanding balance, weekly revenue, upcoming due dates
+- **Orders**: 7 sample orders spanning all urgency states (overdue → safe)
+- **Customers**: 3 sample customers with order history and measurements
+- **Payments**: Weekly payment report with breakdown by day and payment method
+- **Analytics**: Revenue trends, customer lifetime value, popular items
+- **Activity Logs**: Audit trail of all mutations (admin view)
 
 ## Try These Actions
 
-1. **Create a New Order**:
-   - Click "Orders" → "+ New Order"
-   - Select an existing customer or create new
-   - Fill in order details and optional deposit
+1. **Create a new order**: Orders → + New Order → pick existing customer or create inline
+2. **Record a payment**: Open any order with outstanding balance → + Add Payment
+3. **View weekly report**: Payments → toggle This Week / Last Week / custom range
+4. **Switch theme**: Click the sun/moon icon at the bottom of the sidebar
 
-2. **Record a Payment**:
-   - Open any order with outstanding balance
-   - Click "+ Add Payment"
-   - Enter amount and payment method
+## Colour Coding (Due Date Urgency)
 
-3. **View Weekly Report**:
-   - Click "Payments"
-   - Toggle between "This Week", "Last Week", or custom range
-   - See breakdown by day and payment method
-
-4. **See Color Coding**:
-   - Dashboard shows color-coded urgency
-   - Red = Overdue
-   - Orange = 3 days or less
-   - Yellow = 5 days or less
-   - Gray = Safe
-
-## Sample Login Info
-
-No authentication required! The app is ready to use immediately.
+| Colour | Meaning |
+|---|---|
+| Red | Overdue |
+| Rose | Due today or tomorrow |
+| Amber | Due in 2–3 days |
+| Yellow | Due in 4–5 days |
+| Gray | Safe (6+ days) |
 
 ## Need Help?
 
 See [README.md](README.md) for full documentation.
-
----
-
-Happy tailoring! ✂️

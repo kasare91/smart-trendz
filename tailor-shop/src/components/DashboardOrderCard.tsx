@@ -8,11 +8,26 @@ import {
   formatDate,
   getUrgencyColor,
   getUrgencyLabel,
+  type DueDateUrgency,
 } from '@/lib/utils';
 import PaymentModal from './PaymentModal';
 
+interface DashboardOrder {
+  id: string;
+  orderNumber: string;
+  description: string;
+  status: string;
+  totalAmount: number;
+  dueDate: Date | string;
+  amountPaid: number;
+  balance: number;
+  urgency: DueDateUrgency;
+  daysToDue: number;
+  customer: { fullName: string };
+}
+
 interface DashboardOrderCardProps {
-  order: any;
+  order: DashboardOrder;
 }
 
 export default function DashboardOrderCard({ order }: DashboardOrderCardProps) {

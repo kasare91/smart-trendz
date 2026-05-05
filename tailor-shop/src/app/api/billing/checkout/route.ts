@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { stripe } from '@/lib/billing';
+import { getStripe } from '@/lib/billing';
 import { handleApiError, ValidationError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export async function POST() {
 
     let customerId = tenant.stripeCustomerId;
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         name: tenant.name,
         metadata: { tenantId: tenant.id },
       });
@@ -34,7 +34,7 @@ export async function POST() {
     }
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3003').replace(/\/$/, '');
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],

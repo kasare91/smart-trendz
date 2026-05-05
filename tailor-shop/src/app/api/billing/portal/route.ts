@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { stripe } from '@/lib/billing';
+import { getStripe } from '@/lib/billing';
 import { handleApiError, ValidationError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export async function POST() {
     }
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3003').replace(/\/$/, '');
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: tenant.stripeCustomerId,
       return_url: `${appUrl}/settings/billing`,
     });

@@ -36,8 +36,8 @@ async function main() {
   // 1. Create tenant
   const tenant = await prisma.tenant.create({
     data: {
-      name: 'Smart Trendz',
-      slug: 'smart-trendz',
+      name: 'Demo Boutique',
+      slug: 'demo-boutique',
       status: 'ACTIVE',
     },
   });
@@ -48,17 +48,17 @@ async function main() {
   const businessProfile = await prisma.businessProfile.create({
     data: {
       tenantId: tenant.id,
-      businessName: 'Smart Trendz',
+      businessName: 'Demo Boutique',
       businessType: 'Tailor Shop',
       ownerName: 'Demo Owner',
       phoneNumber: '+233 24 000 0000',
-      email: 'hello@smarttrendz.com',
+      email: 'hello@example.com',
       address: '123 Sample Street',
       city: 'Accra',
       country: 'Ghana',
       currency: 'GHS',
       invoicePrefix: 'ORD',
-      receiptFooterNote: 'Thank you for choosing Smart Trendz.',
+      receiptFooterNote: 'Thank you for your business.',
     },
   });
 
@@ -89,7 +89,7 @@ async function main() {
   const adminUser = await prisma.user.create({
     data: {
       tenantId: tenant.id,
-      email: 'admin@smarttrendz.com',
+      email: 'admin@example.com',
       name: 'Admin User',
       password: adminPasswordHash,
       role: 'ADMIN',
@@ -104,7 +104,7 @@ async function main() {
   const accraStaff = await prisma.user.create({
     data: {
       tenantId: tenant.id,
-      email: 'accra@smarttrendz.com',
+      email: 'accra@example.com',
       name: 'Accra Staff',
       password: staffPasswordHash,
       role: 'STAFF',
@@ -116,7 +116,7 @@ async function main() {
   const koforiduaStaff = await prisma.user.create({
     data: {
       tenantId: tenant.id,
-      email: 'koforidua@smarttrendz.com',
+      email: 'koforidua@example.com',
       name: 'Koforidua Staff',
       password: staffPasswordHash,
       role: 'STAFF',
@@ -242,9 +242,9 @@ async function main() {
 
   console.log('\n🎉 Seed complete');
   console.log(`\n👥 Login credentials:`);
-  console.log(`   admin@smarttrendz.com  / ${adminPassword}  (ADMIN)`);
-  console.log(`   accra@smarttrendz.com  / ${staffPassword}  (STAFF – Accra)`);
-  console.log(`   koforidua@smarttrendz.com / ${staffPassword}  (STAFF – Koforidua)`);
+  console.log(`   admin@example.com  / ${adminPassword}  (ADMIN)`);
+  console.log(`   accra@example.com  / ${staffPassword}  (STAFF – Accra)`);
+  console.log(`   koforidua@example.com / ${staffPassword}  (STAFF – Koforidua)`);
 }
 
 main()

@@ -1,4 +1,4 @@
-# CLAUDE.md — Tailor Desk (Smart Trendz)
+# CLAUDE.md — Tailor Desk
 
 This file gives Claude (and any AI coding assistant) full context about this
 codebase so every suggestion, refactor, or new feature fits the existing
@@ -13,8 +13,7 @@ built for the Ghanaian market. It handles customer records, body measurements,
 order tracking, payment collection, WhatsApp receipts, automated due-date
 reminders, and cross-branch analytics.
 
-Business name in production: **Smart Trendz**
-Branches: Accra, Koforidua (more can be added via the Branch table)
+Branches: Configurable per tenant via the Branch table (seed creates Accra and Koforidua as demo data)
 Primary currency: GHS (Ghanaian Cedi)
 Primary payment methods: Cash, Mobile Money (MoMo), Card, Other
 Timezone: Africa/Accra
@@ -74,7 +73,11 @@ tailor-shop/
 │   │   ├── page.tsx           # Dashboard (/)
 │   │   └── globals.css        # Tailwind base only — no custom rules
 │   ├── components/
-│   │   ├── Navigation.tsx     # Sticky top nav with role-aware links
+│   │   ├── Navigation.tsx     # Sidebar nav (fixed 240 px desktop, overlay drawer mobile) with dark-mode toggle
+│   │   ├── ThemeProvider.tsx  # Sets dark class on <html> from localStorage / prefers-color-scheme
+│   │   ├── PageHeader.tsx     # Page title + subtitle + optional action slot
+│   │   ├── EmptyState.tsx     # Empty list placeholder (icon + title + CTA)
+│   │   ├── SkeletonList.tsx   # Animated pulse loading skeleton
 │   │   ├── SessionProvider.tsx
 │   │   ├── MeasurementForm.tsx # Customer body measurement form
 │   │   └── (other shared components)
@@ -93,7 +96,7 @@ tailor-shop/
 ├── .env                       # Local secrets — NEVER commit real credentials
 ├── .env.example               # Template — commit this, not .env
 ├── vercel.json                # Build config + cron schedule
-└── package.json               # name: "smart-trendz"
+└── package.json               # name: "tailor-desk"
 ```
 
 ---
@@ -241,7 +244,7 @@ DATABASE_URL        # Supabase PostgreSQL (pgbouncer) connection string
 DIRECT_URL          # Supabase PostgreSQL direct connection (for migrations)
 
 # Auth
-NEXTAUTH_URL        # Full URL of the app (e.g. https://smarttrendz.vercel.app)
+NEXTAUTH_URL        # Full URL of the app (e.g. https://your-app.vercel.app)
 NEXTAUTH_SECRET     # Generated with: openssl rand -base64 32
 
 # Timezone
@@ -301,15 +304,12 @@ npx prisma db seed         # Seed demo data (dev only)
 
 | Priority | Item |
 |---|---|
-| Critical | Multi-branch API enforcement incomplete — branch filtering not yet applied in all order/customer routes |
 | Critical | Rate limiter is in-memory — must swap to Upstash Redis before scaling to multiple Vercel instances |
 | High | WhatsApp receipts need Twilio WhatsApp Business sender approval before going live |
-| High | Customer Measurement model not yet in schema — see SKILLS.md for full spec |
 | Medium | Export to CSV/PDF for weekly payment reports not implemented |
 | Medium | Collection confirmation has no proof (photo/PIN/timestamp) |
 | Medium | Status and paymentMethod fields should be migrated to PostgreSQL enums |
-| Low | No dark-mode support in the UI yet |
-| Low | No audit log viewer UI (data is captured but not surfaced) |
+| Low | Recharts axis/grid colors are hardcoded SVG hex values — cannot be themed with Tailwind dark mode |
 
 ---
 
@@ -334,3 +334,16 @@ npx prisma db seed         # Seed demo data (dev only)
 - Prisma queries: always use `select` or `include` explicitly — do not return full models with sensitive fields (e.g. `password`) to API consumers.
 - All monetary amounts are stored as `Float` in GHS. Always display with `formatCurrency()` from `src/lib/utils.ts`.
 - Dates are stored in UTC. Display in Africa/Accra timezone using `date-fns` with the `TZDate` or `formatInTimeZone` pattern.
+
+
+## Package Manager
+
+This project uses Yarn. Always use Yarn commands.
+
+- Use `yarn install`, not `npm install`
+- Use `yarn add`, not `npm install`
+- Use `yarn typecheck`, not `npx tsc`
+- Use `yarn build`, not `npm run build`
+- Use `yarn lint`, not `npm run lint`
+
+Never use npm, npx, or pnpm unless explicitly instructed.

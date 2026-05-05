@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, stripeStatusToPlanStatus } from '@/lib/billing';
+import { getStripe, stripeStatusToPlanStatus } from '@/lib/billing';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET ?? '');
+    event = getStripe().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET ?? '');
   } catch {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
         if (!tenantId) break;
 
         const subscription = session.subscription
-          ? await stripe.subscriptions.retrieve(session.subscription as string)
+          ? await getStripe().subscriptions.retrieve(session.subscription as string)
           : null;
 
         await prisma.tenant.update({

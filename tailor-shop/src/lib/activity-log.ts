@@ -56,7 +56,7 @@ export async function getActivityLogs(filters?: {
   endDate?: Date;
   limit?: number;
 }) {
-  const where: any = {};
+  const where: Prisma.ActivityLogWhereInput = {};
 
   if (filters?.branchId) {
     where.branchId = filters.branchId;

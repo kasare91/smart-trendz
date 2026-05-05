@@ -1,5 +1,5 @@
 {
-  "name": "smart-trendz",
+  "name": "tailor-desk",
   "version": "1.0.0",
   "description": "Configurable boutique and tailor shop management system for tracking orders and payments",
   "private": true,
@@ -14,7 +14,8 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:clear": "tsx prisma/clear.ts",
     "prisma:pre-migrate": "tsx prisma/production-pre-migration.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

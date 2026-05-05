@@ -15,7 +15,7 @@ const STORAGE_KEYS = {
 interface PendingItem {
   id: string;
   timestamp: number;
-  data: any;
+  data: unknown;
   type: 'create' | 'update' | 'delete';
   endpoint: string;
 }
@@ -33,7 +33,7 @@ export function isOnline(): boolean {
 export function savePendingAction(
   storageKey: string,
   endpoint: string,
-  data: any,
+  data: unknown,
   type: 'create' | 'update' | 'delete' = 'create'
 ): void {
   try {
@@ -92,7 +92,7 @@ export function clearPendingActions(storageKey: string): void {
 /**
  * Cache data for offline access
  */
-export function cacheData(storageKey: string, data: any): void {
+export function cacheData(storageKey: string, data: unknown): void {
   try {
     localStorage.setItem(storageKey, JSON.stringify(data));
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, Date.now().toString());

@@ -1,6 +1,8 @@
 # Production Migration Guide: Multi-Branch System
 
-This guide explains how to safely migrate your production database from the old schema to the new multi-branch system **without losing any data**.
+> **Status:** Migration complete. This document is retained as a historical reference and rollback guide. If you are setting up a brand-new environment, run `yarn prisma:seed` instead.
+
+This guide explains how to safely migrate a production database from the old single-branch schema to the multi-branch system **without losing any data**.
 
 ## Overview
 

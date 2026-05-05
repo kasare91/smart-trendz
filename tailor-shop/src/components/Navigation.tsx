@@ -82,6 +82,14 @@ function DocumentTextIcon() {
   );
 }
 
+function BuildingIcon() {
+  return (
+    <svg width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+    </svg>
+  );
+}
+
 function MoonIcon() {
   return (
     <svg width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -135,6 +143,7 @@ export default function Navigation({ businessProfile }: { businessProfile?: Busi
     { href: '/fabric-stock', label: 'Fabric Stock', icon: <CubeIcon /> },
     { href: '/settings', label: 'Settings', icon: <CogIcon /> },
     ...(isAdmin ? [
+      { href: '/branches', label: 'Branches', icon: <BuildingIcon /> },
       { href: '/users', label: 'Users', icon: <UserCircleIcon /> },
       { href: '/activity-logs', label: 'Activity Log', icon: <DocumentTextIcon /> },
     ] : []),
@@ -160,8 +169,8 @@ export default function Navigation({ businessProfile }: { businessProfile?: Busi
             size="sm"
           />
           <div>
-            <div className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">{businessName}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Boutique Manager</div>
+            <div className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">Tailor Desk</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{businessName}</div>
           </div>
         </Link>
       </div>
@@ -228,7 +237,7 @@ export default function Navigation({ businessProfile }: { businessProfile?: Busi
         >
           <HamburgerIcon />
         </button>
-        <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{businessName}</span>
+        <span className="text-sm font-bold text-gray-900 dark:text-gray-100">Tailor Desk</span>
         <div className="w-9" />
       </header>
 

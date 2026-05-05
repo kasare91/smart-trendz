@@ -382,8 +382,7 @@ const orders = await prisma.order.findMany({
 });
 ```
 
-**Known gap:** Not all existing routes apply this filter yet — see CLAUDE.md
-Known Issues.
+All collection routes apply this filter via `buildBranchFilter()` from `src/lib/branch.ts`.
 
 **Extension points:**
 - Add a branch selector dropdown in the Navigation for ADMIN users to filter
@@ -541,9 +540,11 @@ await logActivity({
 });
 ```
 
+**Viewer page:** `src/app/activity-logs/page.tsx` — filterable table with user,
+entity type, action, and date range filters. Accessible to ADMIN (all branches)
+and STAFF (own branch only).
+
 **Extension points:**
-- Build an activity log viewer page in the admin dashboard with filters by
-  user, entity type, action, and date range.
 - Add IP address logging for security-sensitive actions.
 
 ---

@@ -1,6 +1,6 @@
 # Vercel Deployment Quick Start
 
-This is a quick reference guide for deploying your multi-branch tailor shop application to Vercel with **zero data loss**.
+Quick reference for deploying to Vercel. For a new environment, skip Step 2 (pre-migration is only needed when upgrading from a pre-multi-branch schema). See [PRODUCTION-MIGRATION-GUIDE.md](./PRODUCTION-MIGRATION-GUIDE.md) for the full migration reference.
 
 ## TL;DR - Quick Steps
 

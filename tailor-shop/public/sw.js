@@ -1,5 +1,5 @@
 // Service Worker for Tailor Desk offline functionality
-const CACHE_NAME = 'smart-trendz-v1';
+const CACHE_NAME = 'tailor-desk-v1';
 const OFFLINE_URL = '/offline';
 
 // Files to cache for offline use

@@ -128,7 +128,7 @@ export default function SignupPage() {
                 value={form.businessName}
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-                placeholder="e.g. Smart Trendz"
+                placeholder="e.g. Accra Styles Boutique"
               />
             </div>
 
