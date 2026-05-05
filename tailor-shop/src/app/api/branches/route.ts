@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { requireAuth, requireRole } from '@/lib/auth';
-import { handleApiError, ValidationError, ForbiddenError } from '@/lib/errors';
+import { handleApiError, ValidationError } from '@/lib/errors';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
-import { getPlanAccess, isFreePlan } from '@/lib/billing';
 
 // Force dynamic rendering for this route
 export const runtime = 'nodejs';
@@ -60,16 +59,6 @@ export async function POST(request: NextRequest) {
 
     if (!name || !location) {
       throw new ValidationError('Branch name and location are required');
-    }
-
-    if (user.tenantId) {
-      const access = await getPlanAccess(user.tenantId);
-      if (isFreePlan(access)) {
-        const branchCount = await prisma.branch.count({ where: { tenantId: user.tenantId } });
-        if (branchCount >= 1) {
-          throw new ForbiddenError('Free plan allows 1 branch. Upgrade to PRO for unlimited branches.');
-        }
-      }
     }
 
     if (!user.tenantId && user.role !== 'SUPER_ADMIN') {

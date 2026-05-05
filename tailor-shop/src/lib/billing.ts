@@ -1,13 +1,16 @@
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
 
-if (!process.env.STRIPE_SECRET_KEY && process.env.NODE_ENV === 'production') {
-  throw new Error('STRIPE_SECRET_KEY is required in production');
-}
+let _stripe: Stripe | null = null;
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
-  apiVersion: '2026-04-22.dahlia',
-});
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new Error('STRIPE_SECRET_KEY is not configured');
+    _stripe = new Stripe(key, { apiVersion: '2026-04-22.dahlia' });
+  }
+  return _stripe;
+}
 
 export interface PlanAccess {
   plan: string;
