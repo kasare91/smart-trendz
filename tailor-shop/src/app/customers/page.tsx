@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { formatCurrency } from '@/lib/utils';
 import PageHeader from '@/components/PageHeader';
@@ -22,24 +23,45 @@ interface Pagination {
   limit: number;
 }
 
+interface Branch { id: string; name: string; }
+
+const emptyAddForm = { fullName: '', phoneNumber: '', email: '', branchId: '' };
+
 export default function CustomersPage() {
   const { data: session } = useSession();
-  const canCreate = session?.user?.role === 'ADMIN' || session?.user?.role === 'STAFF';
+  const router = useRouter();
+  const isAdmin = session?.user?.role === 'ADMIN';
+  const canCreate = isAdmin || session?.user?.role === 'STAFF';
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState(emptyAddForm);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState('');
+
   useEffect(() => {
     fetchCustomers();
   }, [search]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetch('/api/branches?activeOnly=true')
+        .then(r => r.json())
+        .then((data: Branch[]) => setBranches(data))
+        .catch(() => undefined);
+    }
+  }, [isAdmin]);
 
   const fetchCustomers = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
-
       const res = await fetch(`/api/customers?${params.toString()}`);
       const data = await res.json();
       setCustomers(Array.isArray(data) ? data : data.data || []);
@@ -51,21 +73,57 @@ export default function CustomersPage() {
     }
   };
 
+  const openAddModal = () => {
+    setAddForm(emptyAddForm);
+    setAddError('');
+    setShowAddModal(true);
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setAddForm(emptyAddForm);
+    setAddError('');
+  };
+
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddError('');
+    setAddLoading(true);
+    try {
+      const body: Record<string, string> = { fullName: addForm.fullName, phoneNumber: addForm.phoneNumber };
+      if (addForm.email) body.email = addForm.email;
+      if (isAdmin && addForm.branchId) body.branchId = addForm.branchId;
+
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create customer');
+      router.push(`/customers/${data.id}`);
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Failed to create customer');
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Customers"
         subtitle={`Your boutique's customer directory${pagination ? ` (${pagination.total})` : ''}`}
         action={canCreate ? (
-          <Link
-            href="/customers/new"
+          <button
+            onClick={openAddModal}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             New Customer
-          </Link>
+          </button>
         ) : undefined}
       />
 
@@ -93,7 +151,7 @@ export default function CustomersPage() {
             }
             title="No customers yet"
             body="Add your first customer to start creating orders."
-            action={{ label: 'Add customer', href: '/customers/new' }}
+            action={{ label: 'Add customer', onClick: openAddModal }}
           />
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -131,6 +189,102 @@ export default function CustomersPage() {
           </div>
         )}
       </div>
+
+      {/* Add Customer Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900/70 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">New Customer</h3>
+            </div>
+
+            {addError && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+                {addError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateCustomer} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={addForm.fullName}
+                  onChange={e => setAddForm(f => ({ ...f, fullName: e.target.value }))}
+                  placeholder="e.g. Abena Mensah"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={addForm.phoneNumber}
+                  onChange={e => setAddForm(f => ({ ...f, phoneNumber: e.target.value }))}
+                  placeholder="e.g. 024 123 4567"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="email"
+                  value={addForm.email}
+                  onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="e.g. abena@example.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                />
+              </div>
+
+              {isAdmin && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Branch *
+                  </label>
+                  <select
+                    required
+                    value={addForm.branchId}
+                    onChange={e => setAddForm(f => ({ ...f, branchId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                  >
+                    <option value="">Select a branch</option>
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={addLoading}
+                  className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:opacity-50"
+                >
+                  {addLoading ? 'Creating...' : 'Create Customer'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAddModal}
+                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

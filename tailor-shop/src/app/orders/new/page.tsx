@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUpload from '@/components/ImageUpload';
 
+interface CustomerOption { id: string; fullName: string; phoneNumber?: string; }
+
 export default function NewOrderPage() {
   const router = useRouter();
-  const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -162,7 +164,7 @@ export default function NewOrderPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="">Choose a customer...</option>
-                {customers.map((customer: any) => (
+                {customers.map((customer) => (
                   <option key={customer.id} value={customer.id}>
                     {customer.fullName} - {customer.phoneNumber}
                   </option>
