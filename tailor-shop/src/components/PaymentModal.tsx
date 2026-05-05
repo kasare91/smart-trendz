@@ -80,8 +80,8 @@ export default function PaymentModal({
 
       onPaymentSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Payment failed');
     } finally {
       setLoading(false);
     }

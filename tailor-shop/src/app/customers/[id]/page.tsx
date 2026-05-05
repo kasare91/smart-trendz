@@ -10,13 +10,34 @@ import {
   getUrgencyColor,
 } from '@/lib/utils';
 
+interface CustomerOrder {
+  id: string;
+  orderNumber: string;
+  description: string;
+  status: string;
+  totalAmount: number;
+  dueDate: string;
+  payments: { amount: number }[];
+}
+
+interface CustomerDetail {
+  fullName: string;
+  phoneNumber: string;
+  email?: string;
+  creditBalance: number;
+  orders: CustomerOrder[];
+  _count?: { measurements: number };
+}
+
+interface OrderTotals { total: number; paid: number; balance: number; }
+
 export default function CustomerDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
   const router = useRouter();
-  const [customer, setCustomer] = useState<any>(null);
+  const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,8 +73,8 @@ export default function CustomerDetailPage({
   const enrichedOrders = customer.orders.map(enrichOrder);
 
   // Calculate totals
-  const totals = enrichedOrders.reduce(
-    (acc: any, order: any) => ({
+  const totals = enrichedOrders.reduce<OrderTotals>(
+    (acc, order) => ({
       total: acc.total + order.totalAmount,
       paid: acc.paid + order.amountPaid,
       balance: acc.balance + order.balance,
@@ -116,6 +137,14 @@ export default function CustomerDetailPage({
               {formatCurrency(totals.balance)}
             </dd>
           </div>
+          {(customer.creditBalance ?? 0) > 0 && (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Credit Balance</dt>
+              <dd className="mt-1 text-lg font-bold text-teal-600">
+                {formatCurrency(customer.creditBalance)}
+              </dd>
+            </div>
+          )}
         </dl>
       </div>
 
@@ -139,7 +168,7 @@ export default function CustomerDetailPage({
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {enrichedOrders.map((order: any) => {
+            {enrichedOrders.map((order) => {
               const colors = getUrgencyColor(order.urgency);
               return (
                 <Link

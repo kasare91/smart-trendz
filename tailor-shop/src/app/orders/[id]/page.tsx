@@ -14,6 +14,7 @@ import {
 } from '@/lib/utils';
 import BusinessLogo from '@/components/BusinessLogo';
 import { DEFAULT_BUSINESS_NAME } from '@/lib/business-profile';
+import { fetchCached } from '@/lib/client-cache';
 
 type BusinessProfile = {
   businessName: string;
@@ -34,6 +35,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [applyingCredit, setApplyingCredit] = useState(false);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [whatsAppLoading, setWhatsAppLoading] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(false);
@@ -63,8 +65,13 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
 
   const fetchBusinessProfile = async () => {
     try {
-      const res = await fetch('/api/business-profile');
-      const data = (await res.json()) as { data: BusinessProfile | null };
+      const data = await fetchCached(
+        'business-profile',
+        async () => {
+          const res = await fetch('/api/business-profile');
+          return (await res.json()) as { data: BusinessProfile | null };
+        }
+      );
       setBusinessProfile(data.data);
     } catch (error: unknown) {
       console.error('Error fetching business profile:', error);
@@ -97,6 +104,31 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         'error',
         error instanceof Error ? error.message : 'Failed to mark order as collected'
       );
+    }
+  };
+
+  const handleApplyCredit = async () => {
+    if (!order) return;
+    const enriched = enrichOrder(order);
+    const availableCredit = order.customer.creditBalance ?? 0;
+    const toApply = Math.min(availableCredit, enriched.balance);
+    if (toApply <= 0) return;
+    if (!confirm(`Apply GHS ${toApply.toFixed(2)} credit to this order?`)) return;
+    setApplyingCredit(true);
+    try {
+      const res = await fetch(`/api/customers/${order.customerId}/apply-credit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id, amount: toApply }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to apply credit');
+      showToast('success', `GHS ${toApply.toFixed(2)} credit applied`);
+      fetchOrder();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to apply credit');
+    } finally {
+      setApplyingCredit(false);
     }
   };
 
@@ -177,6 +209,17 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
             >
               + Add Payment
+            </button>
+          )}
+          {order.status !== 'COLLECTED' && order.status !== 'CANCELLED' &&
+            (order.customer.creditBalance ?? 0) > 0 &&
+            enriched.balance > 0 && (
+            <button
+              onClick={handleApplyCredit}
+              disabled={applyingCredit}
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium disabled:opacity-50"
+            >
+              {applyingCredit ? 'Applying…' : `Use Credit (GHS ${(order.customer.creditBalance ?? 0).toFixed(2)})`}
             </button>
           )}
           <button
@@ -623,6 +666,7 @@ function PaymentModal({
 }) {
   const enriched = enrichOrder(order);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [payment, setPayment] = useState({
     amount: enriched.balance.toString(),
     paymentMethod: 'CASH',
@@ -630,8 +674,12 @@ function PaymentModal({
     note: '',
   });
 
+  const enteredAmount = parseFloat(payment.amount) || 0;
+  const overpayment = Math.max(0, enteredAmount - enriched.balance);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
 
     try {
@@ -645,13 +693,13 @@ function PaymentModal({
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to add payment');
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to add payment');
       }
 
       onSuccess();
-    } catch (error: unknown) {
-      alert(error instanceof Error ? error.message : 'Failed to add payment');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to add payment');
     } finally {
       setLoading(false);
     }
@@ -663,6 +711,11 @@ function PaymentModal({
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Add Payment
         </h2>
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -672,7 +725,6 @@ function PaymentModal({
               type="number"
               required
               min="0.01"
-              max={enriched.balance}
               step="0.01"
               value={payment.amount}
               onChange={(e) => setPayment({ ...payment, amount: e.target.value })}
@@ -681,6 +733,11 @@ function PaymentModal({
             <p className="mt-1 text-sm text-gray-500">
               Outstanding balance: {formatCurrency(enriched.balance)}
             </p>
+            {overpayment > 0 && (
+              <p className="mt-1 text-sm text-teal-600 font-medium">
+                GHS {overpayment.toFixed(2)} will be added to this customer&apos;s credit balance
+              </p>
+            )}
           </div>
 
           <div>

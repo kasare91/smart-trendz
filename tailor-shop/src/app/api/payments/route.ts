@@ -166,40 +166,48 @@ export async function POST(request: NextRequest) {
 
     // Calculate current balance
     const totalPaid = order.payments.reduce((sum, p) => sum + p.amount, 0);
-    const balance = order.totalAmount - totalPaid;
+    const orderBalance = order.totalAmount - totalPaid;
 
-    if (paymentAmount > balance) {
-      throw new ValidationError(`Payment amount exceeds outstanding balance (GHS ${balance.toFixed(2)})`);
-    }
+    // Determine how much goes to the order vs customer credit
+    const appliedToOrder = Math.min(paymentAmount, orderBalance);
+    const creditAdded = parseFloat((paymentAmount - appliedToOrder).toFixed(2));
 
-    const payment = await prisma.payment.create({
-      data: {
-        orderId,
-        amount: paymentAmount,
-        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-        paymentMethod,
-        note: note || null,
-        createdBy: user.id,
-      },
-      include: {
-        order: {
-          include: {
-            customer: true,
-            branch: {
-              select: {
-                id: true,
-                name: true,
-              },
+    const [payment] = await prisma.$transaction(async (tx) => {
+      const newPayment = await tx.payment.create({
+        data: {
+          orderId,
+          amount: paymentAmount,
+          paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+          paymentMethod,
+          note: creditAdded > 0
+            ? `${note ? note + ' — ' : ''}GHS ${creditAdded.toFixed(2)} added to credit balance`
+            : (note || null),
+          createdBy: user.id,
+        },
+        include: {
+          order: {
+            include: {
+              customer: true,
+              branch: { select: { id: true, name: true } },
+              payments: true,
             },
-            payments: true,
           },
         },
-      },
+      });
+
+      if (creditAdded > 0) {
+        await tx.customer.update({
+          where: { id: order.customerId },
+          data: { creditBalance: { increment: creditAdded } },
+        });
+      }
+
+      return [newPayment];
     });
 
     // Calculate new balance after this payment
     const totalPaidAfter = payment.order.payments.reduce((sum, p) => sum + p.amount, 0);
-    const newBalance = payment.order.totalAmount - totalPaidAfter;
+    const newBalance = Math.max(0, payment.order.totalAmount - totalPaidAfter);
 
     // Log activity
     await logActivity({
@@ -209,7 +217,9 @@ export async function POST(request: NextRequest) {
       action: 'CREATE',
       entity: 'PAYMENT',
       entityId: payment.id,
-      description: `Recorded payment of GHS ${amount} for order ${order.orderNumber}`,
+      description: creditAdded > 0
+        ? `Recorded payment of GHS ${paymentAmount} for order ${order.orderNumber} (GHS ${creditAdded.toFixed(2)} to credit)`
+        : `Recorded payment of GHS ${paymentAmount} for order ${order.orderNumber}`,
       metadata: {
         orderNumber: order.orderNumber,
         customerName: order.customer.fullName,
@@ -217,6 +227,7 @@ export async function POST(request: NextRequest) {
         paymentMethod,
         totalPaid: totalPaidAfter,
         balance: newBalance,
+        creditAdded,
         branchName: order.branch?.name,
       },
     });
