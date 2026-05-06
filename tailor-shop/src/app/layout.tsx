@@ -24,6 +24,10 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: DEFAULT_BUSINESS_NAME,
   },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -39,11 +43,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className="h-full">
-      <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-      </head>
+      <head />
       <body className={`${inter.className} h-full`}>
         <ThemeProvider>
           <SessionProvider>
